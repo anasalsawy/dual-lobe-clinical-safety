@@ -84,9 +84,12 @@ def assessment_from_mapping(data: Mapping[str, object] | None) -> SupervisorAsse
 
 
 def assessment_from_json(raw: str) -> SupervisorAssessment:
-    parsed = extract_json_object(raw) or {}
-    if not isinstance(parsed, Mapping):
-        return SupervisorAssessment(supervisor_claims_grounded=False, notes=("unparseable supervisor output",))
+    parsed = extract_json_object(raw)
+    if not isinstance(parsed, Mapping) or not parsed:
+        return SupervisorAssessment(
+            supervisor_claims_grounded=False,
+            notes=("unparseable or empty supervisor output",),
+        )
     return assessment_from_mapping(parsed)
 
 
