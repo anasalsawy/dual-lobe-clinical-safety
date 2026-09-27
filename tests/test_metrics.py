@@ -1,4 +1,4 @@
-from evaluation.metrics import calculate
+from dual_lobe_clinical.evaluation_metrics import calculate
 
 
 def row(case_id, arm, truth, findings, decision=None):

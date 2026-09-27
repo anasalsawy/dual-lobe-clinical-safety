@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from evaluation.run_benchmark import validate_study_inputs
+from dual_lobe_clinical.benchmark_runner import validate_study_inputs
 
 
 def args(mode, evidence):
