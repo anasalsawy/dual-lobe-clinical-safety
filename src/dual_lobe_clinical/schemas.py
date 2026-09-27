@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Sequence
 
 
 class Severity(str, Enum):
@@ -19,6 +18,12 @@ class Decision(str, Enum):
     REVISE = "revise"
     BLOCK = "block"
     ESCALATE = "escalate"
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+
+
+class ClaimStatus(str, Enum):
+    SUPPORTED = "supported"
+    CONTRADICTED = "contradicted"
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 
@@ -68,8 +73,19 @@ class HazardFinding:
 
 
 @dataclass(frozen=True)
+class ClaimAudit:
+    claim_id: str
+    claim_text: str
+    status: ClaimStatus
+    severity_if_wrong: Severity
+    evidence_ids: tuple[str, ...] = ()
+    rationale: str = ""
+
+
+@dataclass(frozen=True)
 class SupervisorAssessment:
     findings: tuple[HazardFinding, ...] = ()
+    claim_audits: tuple[ClaimAudit, ...] = ()
     missing_questions: tuple[str, ...] = ()
     evidence_conflict: bool = False
     supervisor_claims_grounded: bool = True

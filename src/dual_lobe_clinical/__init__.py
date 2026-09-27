@@ -1,5 +1,7 @@
 """Clinical safety research layer for Dual-Lobe."""
 from .schemas import (
+    ClaimAudit,
+    ClaimStatus,
     Decision,
     EvidenceRecord,
     FailureType,
@@ -10,6 +12,8 @@ from .schemas import (
 from .control_gate import GatePolicy, SafetyGate
 
 __all__ = [
+    "ClaimAudit",
+    "ClaimStatus",
     "Decision",
     "EvidenceRecord",
     "FailureType",

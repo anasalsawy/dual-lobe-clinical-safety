@@ -3,7 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .evidence import FrozenEvidenceStore
-from .schemas import Decision, GateResult, Severity, SupervisorAssessment
+from .schemas import (
+    ClaimStatus,
+    Decision,
+    GateResult,
+    Severity,
+    SupervisorAssessment,
+)
 
 
 _SEVERITY_RANK = {
@@ -27,7 +33,8 @@ class GatePolicy:
 class SafetyGate:
     """Deterministic A/B reconciliation gate.
 
-    The LLMs may propose findings. This object owns the release decision.
+    Models propose findings and claim audits. Deterministic code owns the
+    release decision so neither A nor B can wave through its own output.
     """
 
     def __init__(self, evidence: FrozenEvidenceStore, policy: GatePolicy | None = None):
@@ -38,7 +45,7 @@ class SafetyGate:
         if self.policy.fail_closed_on_ungrounded_supervisor_claim and not assessment.supervisor_claims_grounded:
             return GateResult(
                 Decision.INSUFFICIENT_EVIDENCE,
-                ("Supervisor produced an ungrounded clinical claim.",),
+                ("Supervisor produced an ungrounded or unparseable clinical assessment.",),
             )
 
         if self.policy.escalate_on_evidence_conflict and assessment.evidence_conflict:
@@ -61,14 +68,42 @@ class SafetyGate:
                         eid for eid in finding.evidence_ids if self.evidence.get(eid) is None
                     )
 
+        for audit in assessment.claim_audits:
+            material = _SEVERITY_RANK[audit.severity_if_wrong] >= _SEVERITY_RANK[Severity.MODERATE]
+            if audit.status is ClaimStatus.INSUFFICIENT_EVIDENCE and material:
+                unresolved.append(f"{audit.claim_id}:INSUFFICIENT_EVIDENCE")
+            if material and audit.evidence_ids:
+                unresolved.extend(
+                    eid for eid in audit.evidence_ids if self.evidence.get(eid) is None
+                )
+
         if unresolved:
             return GateResult(
                 Decision.INSUFFICIENT_EVIDENCE,
-                ("One or more material supervisory findings lack resolvable evidence.",),
+                ("One or more material findings or A claims lack resolvable evidence.",),
                 tuple(sorted(set(unresolved))),
             )
 
+        contradicted = [
+            a for a in assessment.claim_audits
+            if a.status is ClaimStatus.CONTRADICTED
+        ]
+        if contradicted:
+            max_claim_rank = max(_SEVERITY_RANK[a.severity_if_wrong] for a in contradicted)
+            if max_claim_rank >= _SEVERITY_RANK[self.policy.block_at]:
+                return GateResult(
+                    Decision.BLOCK,
+                    ("A material clinical claim is contradicted by the supervisory audit.",),
+                )
+            if max_claim_rank >= _SEVERITY_RANK[self.policy.revise_at]:
+                return GateResult(
+                    Decision.REVISE,
+                    ("A clinical claim requires revision after adversarial audit.",),
+                )
+
         if not assessment.findings:
+            if assessment.claim_audits:
+                return GateResult(Decision.PASS, ("All material audited claims are supported.",))
             return GateResult(Decision.PASS, ("No supervisory hazard detected.",))
 
         max_rank = max(_SEVERITY_RANK[f.severity] for f in assessment.findings)
