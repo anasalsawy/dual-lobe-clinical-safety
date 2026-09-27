@@ -78,6 +78,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         b_memory=None,
         privacy_guard: PrivacyGuard | None = None,
         provider_privacy_policy: ProviderPrivacyPolicy | None = None,
+        enable_live_b: bool = True,
     ):
         if memory is None:
             memory = EphemeralClinicalMemory()
@@ -85,6 +86,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             b_memory = EphemeralClinicalMemory()
         super().__init__(memory=memory, b_memory=b_memory)
         self.privacy_guard = privacy_guard or PrivacyGuard(provider_privacy_policy)
+        self.enable_live_b = bool(enable_live_b)
         if evidence_store is not None:
             self.evidence = evidence_store
         else:
@@ -115,8 +117,6 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             query=query,
             patient_context=patient_context,
             evidence_text=evidence_text,
-            privacy_receipt_json=privacy_receipt_json,
-            privacy_trace_identifier_types=privacy_trace_identifier_types,
         )
         raw = await self._safe_run_one(
             b,
@@ -151,6 +151,8 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             delegated_results=delegated_results,
             trace_text=trace_text,
             evidence_text=evidence_text,
+            privacy_receipt_json=privacy_receipt_json,
+            privacy_trace_identifier_types=privacy_trace_identifier_types,
         )
         raw = await self._safe_run_one(
             b,
@@ -211,8 +213,8 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             b_memory=self.b_memory,
             trace=trace,
             state=live_b_state,
-        )
-        live_task = asyncio.create_task(live_monitor.run())
+        ) if self.enable_live_b else None
+        live_task = asyncio.create_task(live_monitor.run()) if live_monitor else None
 
         # This starts BEFORE A's answer exists. It cannot be anchored by A.
         independent_start = time.perf_counter()
@@ -239,9 +241,12 @@ class ClinicalDualLobeEngine(DualLobeEngine):
 
             delegated_results = await collect_all_delegate_results(delegate_state, trace)
 
-            live_monitor.stop()
-            await live_task
-            timings["b_live_calls"] = live_monitor.calls
+            if live_monitor is not None and live_task is not None:
+                live_monitor.stop()
+                await live_task
+                timings["b_live_calls"] = live_monitor.calls
+            else:
+                timings["b_live_calls"] = 0
 
             independent = await independent_task
             timings["b_independent_ms"] = int((time.perf_counter() - independent_start) * 1000)
@@ -297,8 +302,9 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             if released is not None and local_delivery is not None:
                 local_delivery(vault.rehydrate_text(released))
         finally:
-            live_monitor.stop()
-            if not live_task.done():
+            if live_monitor is not None:
+                live_monitor.stop()
+            if live_task is not None and not live_task.done():
                 await live_task
             if not independent_task.done():
                 independent_task.cancel()
@@ -321,7 +327,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             trace_event_count=len(trace_events),
             trace_sha256=trace_sha256,
             timings_ms=timings,
-            logical_model_calls=3 + delegate_state.child_count + live_monitor.calls,
+            logical_model_calls=3 + delegate_state.child_count + (live_monitor.calls if live_monitor else 0),
             privacy_receipt=privacy_receipt,
             privacy_trace_identifier_types=privacy_trace_types,
         )

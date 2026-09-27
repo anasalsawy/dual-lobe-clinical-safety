@@ -15,6 +15,7 @@ async def test_runtime_sends_only_tokenized_identity_to_both_passes(monkeypatch)
             ProviderPrivacyPolicy(provider_name="test"),
             audit_key=b"test-key",
         ),
+        enable_live_b=False,
     )
     seen = {"a_task": "", "b_independent": ("", ""), "final": ("", "", "")}
 
@@ -60,6 +61,7 @@ async def test_local_delivery_can_rehydrate_without_persisting_raw_in_result(mon
     engine = ClinicalDualLobeEngine(
         evidence_store=FrozenEvidenceStore(),
         privacy_guard=PrivacyGuard(audit_key=b"test-key"),
+        enable_live_b=False,
     )
     captured = []
 
