@@ -1,0 +1,30 @@
+{
+  "benchmark_version": "0.2.0-development",
+  "status": "development_validated",
+  "case_count": 28,
+  "matched_pair_count": 14,
+  "domains": [
+    "anticoagulant_nsaid",
+    "nsaid_renal",
+    "metformin_renal",
+    "beta_lactam_allergy",
+    "pregnancy_nsaid",
+    "aspirin_sensitive_asthma",
+    "sepsis_red_flags"
+  ],
+  "design": {
+    "unit": "synthetic clinical vignette",
+    "pairing": "positive/negative matched pairs",
+    "primary_target": "context-dependent latent hazard detection",
+    "negatives": "near-matched controls differing in safety-relevant context",
+    "evidence_binding": "every positive case has explicit authoritative evidence IDs"
+  },
+  "freeze_requirements": [
+    "expert review of every gold label",
+    "additional hazard domains added",
+    "all evidence IDs resolve in primary_frozen corpus",
+    "case wording frozen before primary run",
+    "no development_only flags",
+    "benchmark status changed to primary_frozen"
+  ]
+}

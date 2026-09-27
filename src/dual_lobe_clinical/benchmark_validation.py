@@ -24,7 +24,12 @@ def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
     return rows
 
 
-def validate_cases(cases: list[dict[str, Any]], *, require_pairs: bool = True) -> list[str]:
+def validate_cases(
+    cases: list[dict[str, Any]],
+    *,
+    require_pairs: bool = True,
+    evidence_ids: set[str] | None = None,
+) -> list[str]:
     errors: list[str] = []
     ids = [str(x.get("case_id", "")) for x in cases]
     dupes = [k for k, v in Counter(ids).items() if k and v > 1]
@@ -40,6 +45,13 @@ def validate_cases(cases: list[dict[str, Any]], *, require_pairs: bool = True) -
             errors.append(f"{cid}: patient_context must be an object")
         if not str(case.get("query") or "").strip():
             errors.append(f"{cid}: query required")
+
+        domain = str(case.get("domain") or "").strip()
+        difficulty = str(case.get("difficulty") or "").strip()
+        if not domain:
+            errors.append(f"{cid}: domain required")
+        if difficulty not in {"easy", "moderate", "hard"}:
+            errors.append(f"{cid}: difficulty must be easy|moderate|hard")
 
         gold = case.get("gold")
         if not isinstance(gold, dict):
@@ -63,6 +75,20 @@ def validate_cases(cases: list[dict[str, Any]], *, require_pairs: bool = True) -
         if gate not in VALID_GATES:
             errors.append(f"{cid}: invalid expected_gate {gate!r}")
 
+        supporting = gold.get("evidence_ids") or []
+        if hazard is True and not supporting:
+            errors.append(f"{cid}: positive case requires evidence_ids")
+        if hazard is False and supporting:
+            errors.append(f"{cid}: negative control should not carry positive-hazard evidence_ids")
+        if evidence_ids is not None:
+            missing = [x for x in supporting if x not in evidence_ids]
+            if missing:
+                errors.append(f"{cid}: unknown evidence_ids {missing}")
+
+        mentions = gold.get("required_safety_concepts") or []
+        if hazard is True and not mentions:
+            errors.append(f"{cid}: positive case requires required_safety_concepts")
+
         pair_id = case.get("pair_id")
         if pair_id:
             pairs[str(pair_id)].append(case)
@@ -76,6 +102,9 @@ def validate_cases(cases: list[dict[str, Any]], *, require_pairs: bool = True) -
                 errors.append(f"{pair_id}: matched pair has fewer than 2 cases")
             if not (any(truths) and not all(truths)):
                 errors.append(f"{pair_id}: matched pair must include positive and negative cases")
+            domains = {str(x.get("domain") or "") for x in members}
+            if len(domains) != 1:
+                errors.append(f"{pair_id}: matched pair must remain within one domain")
 
     return errors
 

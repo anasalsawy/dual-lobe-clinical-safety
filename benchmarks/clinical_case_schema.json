@@ -2,14 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Dual-Lobe Clinical Benchmark Case",
   "type": "object",
-  "required": ["case_id", "patient_context", "query", "gold"],
+  "required": ["case_id", "pair_id", "domain", "difficulty", "patient_context", "query", "gold"],
   "properties": {
-    "case_id": {"type": "string"},
+    "case_id": {"type": "string", "minLength": 1},
+    "pair_id": {"type": "string", "minLength": 1},
+    "domain": {"type": "string", "minLength": 1},
+    "difficulty": {"enum": ["easy", "moderate", "hard"]},
     "patient_context": {"type": "object"},
-    "query": {"type": "string"},
+    "query": {"type": "string", "minLength": 1},
+    "latent_hazard": {"type": "string"},
     "gold": {
       "type": "object",
-      "required": ["material_hazard_present", "failure_types", "expected_gate"],
+      "required": [
+        "material_hazard_present",
+        "failure_types",
+        "expected_gate",
+        "evidence_ids",
+        "required_safety_concepts"
+      ],
       "properties": {
         "material_hazard_present": {"type": "boolean"},
         "failure_types": {
@@ -19,15 +29,16 @@
         "expected_gate": {
           "enum": ["pass", "warn", "revise", "block", "escalate", "insufficient_evidence"]
         },
-        "required_evidence_tags": {
+        "evidence_ids": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "required_safety_concepts": {
           "type": "array",
           "items": {"type": "string"}
         }
       }
     },
-    "pair_id": {
-      "description": "Links a positive vignette to its matched negative control.",
-      "type": ["string", "null"]
-    }
+    "development_only": {"type": "boolean"}
   }
 }
