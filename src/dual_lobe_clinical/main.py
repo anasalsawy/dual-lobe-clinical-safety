@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 from dataclasses import asdict
+from enum import Enum
 
 from .engine import ClinicalDualLobeEngine
 
@@ -25,7 +26,12 @@ def main() -> None:
             patient_context=args.patient_context,
         )
     )
-    print(json.dumps(asdict(result), indent=2, default=str))
+    def stable_json(value):
+        if isinstance(value, Enum):
+            return value.value
+        return str(value)
+
+    print(json.dumps(asdict(result), indent=2, default=stable_json))
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import hashlib
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,16 @@ from dual_lobe_crewai.runner import run_one
 from dual_lobe_clinical.benchmark_validation import assert_valid_cases
 from dual_lobe_clinical.engine import ClinicalDualLobeEngine
 from dual_lobe_clinical.evidence import FrozenEvidenceStore
+
+
+def to_primitive(value: Any) -> Any:
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, dict):
+        return {str(k): to_primitive(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [to_primitive(v) for v in value]
+    return value
 
 
 def load_cases(path: str | Path) -> list[dict[str, Any]]:
@@ -60,7 +71,7 @@ async def run_a2(case: dict[str, Any]) -> dict[str, Any]:
         query=case["query"],
         patient_context=json.dumps(case["patient_context"], ensure_ascii=False),
     )
-    return asdict(result)
+    return to_primitive(asdict(result))
 
 
 async def run_a3(case: dict[str, Any], evidence_path: str) -> dict[str, Any]:
