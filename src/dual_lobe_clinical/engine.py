@@ -112,7 +112,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         patient_context: str,
         evidence_text: str,
     ) -> SupervisorAssessment:
-        b = make_b_adversary(tools=None)
+        b = make_b_adversary(tools=None, llm_role="B_CLINICAL")
         prompt = build_independent_prompt(
             query=query,
             patient_context=patient_context,
@@ -123,7 +123,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             prompt,
             "Strict JSON independent clinical-safety assessment.",
             fallback_text='{"supervisor_claims_grounded": false, "notes": ["independent B pass failed"]}',
-            role_key="B_VERIFY",
+            role_key="B_CLINICAL",
         )
         return assessment_from_json(raw)
 
@@ -141,7 +141,10 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         privacy_trace_identifier_types: str,
     ) -> SupervisorAssessment:
         b_trace = ProxyToolTrace()
-        b = make_b_adversary(tools=make_worker_tools(self.b_memory, trace=b_trace))
+        b = make_b_adversary(
+            tools=make_worker_tools(self.b_memory, trace=b_trace),
+            llm_role="B_CLINICAL",
+        )
         prior = json.dumps(asdict(independent), indent=2)
         prompt = build_final_audit_prompt(
             query=query,
@@ -159,7 +162,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             prompt,
             "Strict JSON final clinical adversarial audit with claim ledger.",
             fallback_text='{"supervisor_claims_grounded": false, "notes": ["final B audit failed"]}',
-            role_key="B_VERIFY",
+            role_key="B_CLINICAL",
         )
         if b_trace.events:
             # B's own tool activity is evidence about the audit itself. It is
@@ -213,6 +216,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             b_memory=self.b_memory,
             trace=trace,
             state=live_b_state,
+            role_key="B_CLINICAL",
         ) if self.enable_live_b else None
         live_task = asyncio.create_task(live_monitor.run()) if live_monitor else None
 

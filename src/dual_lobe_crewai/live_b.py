@@ -26,6 +26,7 @@ class LiveBMonitor:
     b_memory: JsonlMemoryStore
     trace: ProxyToolTrace
     state: LiveBState
+    role_key: str = "B_VERIFY"
     max_calls: int = field(
         default_factory=lambda: max(1, int(os.getenv("DUAL_LOBE_B_LIVE_MAX_CALLS", "6")))
     )
@@ -163,13 +164,13 @@ Return ONLY JSON:
   "state_note": "the independent adversarial position B is preserving"
 }}"""
 
-        b = make_b_adversary(tools=None)
+        b = make_b_adversary(tools=None, llm_role=self.role_key)
         try:
             raw = await run_one(
                 b,
                 prompt,
                 "Strict JSON live adversarial observation.",
-                role_key="B_VERIFY",
+                role_key=self.role_key,
             )
             data = extract_json_object(raw) or {}
         except Exception as exc:

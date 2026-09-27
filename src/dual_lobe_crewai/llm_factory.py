@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import replace
+from urllib.parse import urlparse
 from crewai import LLM
 
 from .provider_control import ProviderSpec
@@ -22,14 +23,32 @@ def _role_defaults(role: str) -> tuple[str, int, str]:
         return os.getenv("DUAL_LOBE_B_VERIFY_MODEL", b_default), int(os.getenv("DUAL_LOBE_B_VERIFY_MAX_TOKENS", "6000")), "B"
     if role == "B_WORKER":
         return os.getenv("DUAL_LOBE_B_WORKER_MODEL", b_default), int(os.getenv("DUAL_LOBE_B_WORKER_MAX_TOKENS", "6000")), "B"
+    if role == "B_CLINICAL":
+        return (
+            os.getenv("DUAL_LOBE_CLINICAL_B_MODEL", "openai/clinical-b-guardian"),
+            int(os.getenv("DUAL_LOBE_CLINICAL_B_MAX_TOKENS", "6000")),
+            "CLINICAL_B",
+        )
     raise ValueError(f"Unknown LLM role: {role}")
 
 
 def primary_spec(role: str) -> ProviderSpec:
     role = role.upper()
     model, max_tokens, key_role = _role_defaults(role)
-    api_key = os.getenv(f"DUAL_LOBE_{role}_API_KEY") or os.getenv(f"DUAL_LOBE_{key_role}_API_KEY") or os.getenv("OPENAI_API_KEY")
-    base_url = os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL") or os.getenv("OPENAI_API_BASE")
+    if role == "B_CLINICAL":
+        api_key = (
+            os.getenv("DUAL_LOBE_CLINICAL_B_API_KEY")
+            or os.getenv("DUAL_LOBE_B_CLINICAL_API_KEY")
+            or "local"
+        )
+        base_url = (
+            os.getenv("DUAL_LOBE_CLINICAL_B_BASE_URL")
+            or os.getenv("DUAL_LOBE_B_CLINICAL_BASE_URL")
+            or "http://127.0.0.1:11434/v1"
+        )
+    else:
+        api_key = os.getenv(f"DUAL_LOBE_{role}_API_KEY") or os.getenv(f"DUAL_LOBE_{key_role}_API_KEY") or os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL") or os.getenv("OPENAI_API_BASE")
     tier = (os.getenv(f"DUAL_LOBE_{role}_TIER") or os.getenv(f"DUAL_LOBE_{key_role}_TIER") or os.getenv("DUAL_LOBE_PROVIDER_TIER", "auto")).lower()
     rpm = _opt_int(os.getenv(f"DUAL_LOBE_{role}_RPM") or os.getenv(f"DUAL_LOBE_{key_role}_RPM"))
     tpm = _opt_int(os.getenv(f"DUAL_LOBE_{role}_TPM") or os.getenv(f"DUAL_LOBE_{key_role}_TPM"))
@@ -52,9 +71,35 @@ def _fallback_json(role: str) -> list[dict]:
         return []
 
 
+def _is_local_base_url(base_url: str | None) -> bool:
+    if not base_url:
+        return False
+    try:
+        parsed = urlparse(base_url)
+        host = (parsed.hostname or "").lower()
+    except Exception:
+        return False
+    return (
+        host == "localhost"
+        or host == "::1"
+        or host == "host.docker.internal"
+        or host.startswith("127.")
+    )
+
+
+def _assert_clinical_b_local(spec: ProviderSpec) -> None:
+    if not _is_local_base_url(spec.base_url):
+        raise ValueError(
+            "B_CLINICAL is local-only. Set DUAL_LOBE_CLINICAL_B_BASE_URL to a loopback/local endpoint "
+            "(for example http://127.0.0.1:11434/v1). Remote B endpoints are rejected."
+        )
+
+
 def resolve_role_specs(role: str) -> list[ProviderSpec]:
     role = role.upper()
     primary = primary_spec(role)
+    if role == "B_CLINICAL":
+        _assert_clinical_b_local(primary)
     out = [primary]
     for i, row in enumerate(_fallback_json(role), 1):
         if not isinstance(row, dict) or not row.get("model"):
@@ -62,7 +107,7 @@ def resolve_role_specs(role: str) -> list[ProviderSpec]:
         key = row.get("api_key")
         if not key and row.get("api_key_env"):
             key = os.getenv(str(row["api_key_env"]))
-        out.append(ProviderSpec(
+        candidate = ProviderSpec(
             model=str(row["model"]),
             max_tokens=int(row.get("max_tokens") or primary.max_tokens),
             api_key=key or primary.api_key,
@@ -71,9 +116,12 @@ def resolve_role_specs(role: str) -> list[ProviderSpec]:
             rpm=_opt_int(row.get("rpm")),
             tpm=_opt_int(row.get("tpm")),
             label=str(row.get("label") or f"{role}:fallback:{i}"),
-        ))
+        )
+        if role == "B_CLINICAL":
+            _assert_clinical_b_local(candidate)
+        out.append(candidate)
 
-    if os.getenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "true").lower() in {"1", "true", "yes", "on"}:
+    if role != "B_CLINICAL" and os.getenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "true").lower() in {"1", "true", "yes", "on"}:
         for other in ["A", "A_CHILD", "B_VERIFY"]:
             if other == role or (role == "A_MERGE" and other == "A"):
                 continue

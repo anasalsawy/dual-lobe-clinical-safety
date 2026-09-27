@@ -30,7 +30,7 @@ def make_child_worker(tools=None) -> Agent:
     )
 
 
-def make_b_adversary(tools=None) -> Agent:
+def make_b_adversary(tools=None, *, llm_role: str = "B_VERIFY") -> Agent:
     return Agent(
         role="Lobe B — Independent Adversary and Anti-Deception Verifier",
         goal=(
@@ -39,7 +39,7 @@ def make_b_adversary(tools=None) -> Agent:
             "unsupported claim merely because A is confident or because B agrees with it."
         ),
         backstory=B_ADVERSARY_PERSONA,
-        llm=make_llm("B_VERIFY"),
+        llm=make_llm(llm_role),
         tools=list(tools or []),
         verbose=False,
         allow_delegation=False,
