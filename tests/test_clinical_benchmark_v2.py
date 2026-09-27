@@ -4,10 +4,10 @@ from dual_lobe_clinical.benchmark_validation import load_jsonl, validate_cases
 from dual_lobe_clinical.evidence import FrozenEvidenceStore
 
 
-def test_v02_benchmark_has_28_cases_and_14_pairs():
+def test_v03_benchmark_has_48_cases_and_24_pairs():
     cases = load_jsonl(Path("benchmarks/clinical_cases_v2.jsonl"))
-    assert len(cases) == 28
-    assert len({c["pair_id"] for c in cases}) == 14
+    assert len(cases) == 48
+    assert len({c["pair_id"] for c in cases}) == 24
 
 
 def test_v02_benchmark_is_structurally_valid_against_evidence_corpus():
@@ -47,4 +47,9 @@ def test_benchmark_spans_all_seed_evidence_domains():
         "pregnancy_nsaid",
         "aspirin_sensitive_asthma",
         "sepsis_red_flags",
+        "acetaminophen_hepatic",
+        "citalopram_qt_electrolyte",
+        "glyburide_geriatric",
+        "methotrexate_infection",
+        "stroke_red_flags",
     }

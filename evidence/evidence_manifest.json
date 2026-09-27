@@ -184,7 +184,7 @@
       "evidence_id": "DM_CITALOPRAM_QT_ELECTROLYTE_2026",
       "source": "DailyMed current U.S. prescribing information for citalopram tablets",
       "title": "Citalopram — QT prolongation and electrolyte risk",
-      "version_or_date": "DailyMed label section revision 2026-09-10",
+      "version_or_date": "DailyMed label updated 2025-08-04; QT warning section 5.2",
       "excerpt": "Citalopram labeling warns of dose-dependent QTc prolongation and advises avoidance in patients with hypokalemia or hypomagnesemia and in those taking other QT-prolonging drugs; electrolyte monitoring is advised in patients at risk.",
       "tags": [
         "citalopram",
@@ -200,7 +200,7 @@
       "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=f3237467-286d-480d-8c80-b9a97738edaa",
       "source_org": "U.S. National Library of Medicine / DailyMed",
       "source_type": "regulatory_label",
-      "effective_date": "2026-09-10",
+      "effective_date": "2025-08-04",
       "accessed_at": "2026-09-28",
       "source_locator": "Section 5.2, QT-Prolongation and Torsade de Pointes"
     },
