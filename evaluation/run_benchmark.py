@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from dual_lobe_crewai.agents import make_a, make_b_adversary
 from dual_lobe_crewai.runner import run_one
 
+from dual_lobe_clinical.benchmark_validation import assert_valid_cases
 from dual_lobe_clinical.engine import ClinicalDualLobeEngine
 from dual_lobe_clinical.evidence import FrozenEvidenceStore
 
@@ -88,11 +91,39 @@ async def run_case(case: dict[str, Any], arm: str, evidence_path: str) -> dict[s
     }
 
 
+def _sha256(path: str | Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def validate_study_inputs(args, cases: list[dict[str, Any]]) -> None:
+    assert_valid_cases(cases)
+    evidence = FrozenEvidenceStore.load_json(args.evidence)
+    if args.study_mode == "primary":
+        if any(bool(c.get("development_only")) for c in cases):
+            raise ValueError("primary study refuses development_only benchmark cases")
+        if not evidence.records():
+            raise ValueError("primary study refuses an empty evidence corpus")
+
+
 async def main_async(args) -> None:
     cases = load_cases(args.cases)
+    validate_study_inputs(args, cases)
     arms = [x.strip().upper() for x in args.arms.split(",") if x.strip()]
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
+
+    manifest = {
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "study_mode": args.study_mode,
+        "cases_path": str(args.cases),
+        "cases_sha256": _sha256(args.cases),
+        "evidence_path": str(args.evidence),
+        "evidence_sha256": _sha256(args.evidence),
+        "arms": arms,
+        "case_ids": [c["case_id"] for c in cases],
+    }
+    manifest_path = out.with_suffix(out.suffix + ".manifest.json")
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     with out.open("w", encoding="utf-8") as f:
         for case in cases:
@@ -108,6 +139,7 @@ def main() -> None:
     p.add_argument("--arms", default="A0,A1,A2,A3")
     p.add_argument("--evidence", default="evidence/evidence_manifest.json")
     p.add_argument("--output", default="results/raw_results.jsonl")
+    p.add_argument("--study-mode", choices=["development", "primary"], default="development")
     args = p.parse_args()
     asyncio.run(main_async(args))
 
