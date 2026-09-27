@@ -34,3 +34,15 @@ This is a **research system**, not a clinical decision-support product and not f
 ## Parent project
 
 Derived from `anasalsawy/dual-lobe-proxy`. The parent architecture provides persistent A/B roles, live supervisory observation, anti-deception verification, memory, and benchmark scaffolding.
+
+
+## Clinical runtime
+
+The clinical research runtime now uses a **two-pass B**:
+
+1. **Independent pass (concurrent with A):** B sees the original query, patient context, and frozen retrieved evidence, but not A's answer. It constructs safety obligations without answer anchoring.
+2. **Final adversarial audit:** after A and delegated work finish, B receives A's exact answer, its prior independent assessment, the full observable execution/provenance trace, delegated results, and the same frozen evidence. B must construct a claim ledger for every material clinical claim.
+
+A deterministic gate then decides whether the candidate may be released. The research runtime is fail-closed: only `PASS` and `WARN` release the candidate; `REVISE`, `BLOCK`, `ESCALATE`, and `INSUFFICIENT_EVIDENCE` withhold it.
+
+The runtime records the count and SHA-256 fingerprint of the observable A/child trace supplied to final B. This does **not** claim access to a model's hidden chain-of-thought; it proves which observable tool/delegation/runtime events were available to B.
