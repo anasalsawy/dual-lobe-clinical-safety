@@ -6,23 +6,15 @@ from pathlib import Path
 
 from .adjudication import attach_consensus_to_results, consensus_by_sample
 from .adjudicated_metrics import calculate_from_adjudicated_rows
-from .statistics import add_confidence_intervals, paired_arm_comparison
+from .statistics import add_confidence_intervals
 from .study_runner import sha256_file
 
 
 def load_jsonl(path: str | Path) -> list[dict]:
-    return [
-        json.loads(line)
-        for line in Path(path).read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def score_primary_study(
-    *,
-    run_dir: str | Path,
-    adjudications_path: str | Path,
-) -> dict:
+def score_primary_study(*, run_dir: str | Path, adjudications_path: str | Path) -> dict:
     run_dir=Path(run_dir)
     raw=run_dir/"raw_results.jsonl"
     key_path=run_dir/"PRIVATE_blinding_key.json"
@@ -38,25 +30,14 @@ def score_primary_study(
     consensus=consensus_by_sample(reviews)
     scored=attach_consensus_to_results(rows,key=key,consensus=consensus)
 
-    expected=len(rows)
-    if len(scored)!=expected:
-        unresolved=expected-len(scored)
-        raise ValueError(
-            f"primary scoring requires locked consensus for every sample; {unresolved} unresolved"
-        )
+    if len(scored)!=len(rows):
+        raise ValueError(f"primary scoring requires locked consensus for every sample; {len(rows)-len(scored)} unresolved")
 
     metrics=add_confidence_intervals(calculate_from_adjudicated_rows(scored))
-    comparisons=[
-        paired_arm_comparison(scored,arm_a="A0",arm_b="A1"),
-        paired_arm_comparison(scored,arm_a="A0",arm_b="A2"),
-        paired_arm_comparison(scored,arm_a="A1",arm_b="A2"),
-        paired_arm_comparison(scored,arm_a="A2",arm_b="A3"),
-    ]
-
     payload={
         "status":"primary_results_locked",
-        "arms":metrics,
-        "paired_comparisons":comparisons,
+        "system":"dual_lobe_clinical",
+        "metrics":metrics,
         "input_hashes":{
             "raw_results":sha256_file(raw),
             "adjudications":sha256_file(adjudications_path),
@@ -64,8 +45,7 @@ def score_primary_study(
             "primary_run_manifest":sha256_file(run_manifest_path),
         },
     }
-    out=run_dir/"primary_results.json"
-    out.write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
+    (run_dir/"primary_results.json").write_text(json.dumps(payload,indent=2)+"\n",encoding="utf-8")
     return payload
 
 
@@ -74,10 +54,7 @@ def main() -> None:
     p.add_argument("--run-dir",required=True)
     p.add_argument("--adjudications",required=True)
     args=p.parse_args()
-    print(json.dumps(score_primary_study(
-        run_dir=args.run_dir,
-        adjudications_path=args.adjudications,
-    ),indent=2))
+    print(json.dumps(score_primary_study(run_dir=args.run_dir,adjudications_path=args.adjudications),indent=2))
 
 
 if __name__=="__main__":

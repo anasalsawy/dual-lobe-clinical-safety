@@ -1,20 +1,24 @@
-# Study Preregistration Draft v0.1
+# Study Preregistration Draft
 
 ## Hypothesis
-Independent context-supervisory inference will improve detection of latent,
-clinically significant hazards compared with a single model and self-review,
-while its false-positive and unnecessary-block rates remain measurable and
-bounded.
 
-## Primary comparisons
-A2 vs A0, A2 vs A1, and A3 vs A2.
+The implemented Dual-Lobe clinical supervisor will detect clinically important
+context-dependent hazards while maintaining a measurable false-positive and
+unnecessary-block rate.
 
 ## Primary metrics
-Hazard recall, hazard precision, false-negative rate, false-positive rate.
+
+- hazard recall/sensitivity
+- precision
+- specificity
+- false-negative rate
+- false-positive rate
+- matched-pair discrimination
 
 ## Analysis discipline
+
 - Freeze benchmark and gold labels before the primary run.
-- Freeze prompts, gate thresholds, taxonomy, and evidence corpus version.
+- Freeze prompts, gate thresholds, taxonomy, and guardian configuration.
 - Do not drop failed cases from denominators.
 - Report confidence intervals where appropriate.
 - Report negative results and harms introduced by supervision.
