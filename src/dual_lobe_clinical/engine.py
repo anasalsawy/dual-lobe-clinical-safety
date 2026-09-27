@@ -22,7 +22,7 @@ from dual_lobe_crewai.tools import (
 from .control_gate import SafetyGate
 from .evidence import FrozenEvidenceStore
 from .parsing import assessment_from_json, merge_assessments
-from .prompts import CLINICAL_ADVERSARIAL_AUDIT, CLINICAL_INDEPENDENT_PASS
+from .prompts import build_final_audit_prompt, build_independent_prompt
 from .schemas import Decision, GateResult, SupervisorAssessment
 
 
@@ -95,19 +95,11 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         evidence_text: str,
     ) -> SupervisorAssessment:
         b = make_b_adversary(tools=None)
-        prompt = f"""{CLINICAL_INDEPENDENT_PASS}
-
-ORIGINAL CLINICIAN/USER QUERY:
-{query}
-
-SUPPLIED PATIENT / CLINICAL CONTEXT:
-{patient_context if patient_context else "(none supplied)"}
-
-FROZEN RETRIEVED EVIDENCE:
-{evidence_text}
-
-You are intentionally NOT being shown A's answer or A's execution.
-Form the independent safety obligations now."""
+        prompt = build_independent_prompt(
+            query=query,
+            patient_context=patient_context,
+            evidence_text=evidence_text,
+        )
         raw = await self._safe_run_one(
             b,
             prompt,
@@ -131,31 +123,15 @@ Form the independent safety obligations now."""
         b_trace = ProxyToolTrace()
         b = make_b_adversary(tools=make_worker_tools(self.b_memory, trace=b_trace))
         prior = json.dumps(asdict(independent), indent=2)
-        prompt = f"""{CLINICAL_ADVERSARIAL_AUDIT}
-
-ORIGINAL CLINICIAN/USER QUERY:
-{query}
-
-SUPPLIED PATIENT / CLINICAL CONTEXT:
-{patient_context if patient_context else "(none supplied)"}
-
-B'S PRE-ANSWER INDEPENDENT SAFETY ASSESSMENT:
-{prior}
-
-A'S EXACT CANDIDATE ANSWER:
-{a_answer}
-
-DELEGATED CHILD RESULTS:
-{delegated_results if delegated_results else "(none)"}
-
-COMPLETE OBSERVABLE A/CHILD EXECUTION + PROVENANCE TRACE:
-{trace_text if trace_text else "(no observable runtime events)"}
-
-FROZEN RETRIEVED EVIDENCE:
-{evidence_text}
-
-Audit A meticulously. Do not treat agreement between A and B as evidence.
-Every material A clinical claim must appear in claim_audits."""
+        prompt = build_final_audit_prompt(
+            query=query,
+            patient_context=patient_context,
+            independent_json=prior,
+            a_answer=a_answer,
+            delegated_results=delegated_results,
+            trace_text=trace_text,
+            evidence_text=evidence_text,
+        )
         raw = await self._safe_run_one(
             b,
             prompt,

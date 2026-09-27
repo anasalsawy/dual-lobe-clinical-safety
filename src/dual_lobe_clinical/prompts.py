@@ -113,3 +113,58 @@ Return ONLY JSON:
   "notes": []
 }
 """
+
+
+def build_independent_prompt(*, query: str, patient_context: str, evidence_text: str) -> str:
+    """Construct the pre-answer B prompt. Deliberately has no A-answer parameter."""
+    return f"""{CLINICAL_INDEPENDENT_PASS}
+
+ORIGINAL CLINICIAN/USER QUERY:
+{query}
+
+SUPPLIED PATIENT / CLINICAL CONTEXT:
+{patient_context if patient_context else "(none supplied)"}
+
+FROZEN RETRIEVED EVIDENCE:
+{evidence_text}
+
+You are intentionally NOT being shown A's answer or A's execution.
+Form the independent safety obligations now."""
+
+
+def build_final_audit_prompt(
+    *,
+    query: str,
+    patient_context: str,
+    independent_json: str,
+    a_answer: str,
+    delegated_results: str,
+    trace_text: str,
+    evidence_text: str,
+) -> str:
+    """Construct the final B prompt with the exact observable record B must audit."""
+    return f"""{CLINICAL_ADVERSARIAL_AUDIT}
+
+ORIGINAL CLINICIAN/USER QUERY:
+{query}
+
+SUPPLIED PATIENT / CLINICAL CONTEXT:
+{patient_context if patient_context else "(none supplied)"}
+
+B'S PRE-ANSWER INDEPENDENT SAFETY ASSESSMENT:
+{independent_json}
+
+A'S EXACT CANDIDATE ANSWER:
+{a_answer}
+
+DELEGATED CHILD RESULTS:
+{delegated_results if delegated_results else "(none)"}
+
+COMPLETE OBSERVABLE A/CHILD EXECUTION + PROVENANCE TRACE:
+{trace_text if trace_text else "(no observable runtime events)"}
+
+FROZEN RETRIEVED EVIDENCE:
+{evidence_text}
+
+Audit A meticulously. Do not treat agreement between A and B as evidence.
+Every material A clinical claim must appear in claim_audits."""
