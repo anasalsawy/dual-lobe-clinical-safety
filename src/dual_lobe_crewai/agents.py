@@ -34,8 +34,9 @@ def make_b_adversary(tools=None) -> Agent:
     return Agent(
         role="Lobe B — Independent Adversary and Anti-Deception Verifier",
         goal=(
-            "Attack A's reasoning, goal-fit, assumptions, feasibility, and evidence; find what A or the user may be missing; "
-            "then repair the answer where possible and verify the exact canonical result."
+            "Independently challenge A's reasoning, goal-fit, assumptions, feasibility, execution provenance, "
+            "and every material claim; surface omissions and contradictory evidence; never wave through an "
+            "unsupported claim merely because A is confident or because B agrees with it."
         ),
         backstory=B_ADVERSARY_PERSONA,
         llm=make_llm("B_VERIFY"),
