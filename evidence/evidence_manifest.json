@@ -1,7 +1,7 @@
 {
-  "corpus_version": "0.2.0-authoritative-seed",
+  "corpus_version": "0.3.0-authoritative-seed",
   "status": "development_validated",
-  "description": "Authoritative seed corpus for development and benchmark construction. Records are concise normalized clinical propositions derived from traceable official U.S. sources. This corpus is intentionally not marked primary_frozen until coverage review is complete.",
+  "description": "Authoritative development corpus with traceable official U.S. sources covering drug interaction, renal impairment, beta-lactam allergy, pregnancy NSAID risk, sepsis red flags, and aspirin-sensitive asthma. Not primary_frozen until the coverage matrix is complete and clinically reviewed.",
   "accessed_at": "2026-09-27",
   "records": [
     {
@@ -10,7 +10,15 @@
       "title": "Warfarin sodium — drugs that increase bleeding risk",
       "version_or_date": "Current DailyMed label accessed 2026-09-27; section 7.3",
       "excerpt": "The warfarin label identifies nonsteroidal anti-inflammatory drugs, including ibuprofen and naproxen, among concomitant medicines that increase bleeding risk and calls for close monitoring when used together.",
-      "tags": ["warfarin", "anticoagulation", "nsaid", "ibuprofen", "naproxen", "bleeding", "drug_interaction"],
+      "tags": [
+        "warfarin",
+        "anticoagulation",
+        "nsaid",
+        "ibuprofen",
+        "naproxen",
+        "bleeding",
+        "drug_interaction"
+      ],
       "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=5a5b5e3a-6556-a542-e063-6294a90a6d3f",
       "source_org": "U.S. National Library of Medicine / DailyMed",
       "source_type": "regulatory_label",
@@ -24,7 +32,15 @@
       "title": "Ibuprofen — renal effects and advanced renal disease",
       "version_or_date": "DailyMed label section revision 2026-08-26",
       "excerpt": "Ibuprofen labeling identifies impaired renal function as a risk factor for NSAID-related renal decompensation and states that treatment is not recommended in advanced renal disease unless benefits justify use with renal monitoring.",
-      "tags": ["ibuprofen", "nsaid", "renal", "kidney", "advanced_renal_disease", "analgesic", "renal_impairment"],
+      "tags": [
+        "ibuprofen",
+        "nsaid",
+        "renal",
+        "kidney",
+        "advanced_renal_disease",
+        "analgesic",
+        "renal_impairment"
+      ],
       "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=2572ed69-d5a7-4513-a202-aca3230e7ec5",
       "source_org": "U.S. National Library of Medicine / DailyMed",
       "source_type": "regulatory_label",
@@ -38,7 +54,15 @@
       "title": "Amoxicillin — serious beta-lactam hypersensitivity contraindication",
       "version_or_date": "DailyMed label section revision 2026-07-20",
       "excerpt": "Amoxicillin is contraindicated in patients with a history of serious hypersensitivity reactions to amoxicillin or other beta-lactam antibacterial drugs, including penicillins and cephalosporins.",
-      "tags": ["amoxicillin", "penicillin", "beta_lactam", "allergy", "hypersensitivity", "anaphylaxis", "contraindication"],
+      "tags": [
+        "amoxicillin",
+        "penicillin",
+        "beta_lactam",
+        "allergy",
+        "hypersensitivity",
+        "anaphylaxis",
+        "contraindication"
+      ],
       "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=b07b5ac4-253e-4c83-91c3-3fdc46e91a0f",
       "source_org": "U.S. National Library of Medicine / DailyMed",
       "source_type": "regulatory_label",
@@ -52,7 +76,15 @@
       "title": "NSAID use in pregnancy at 20 weeks or later",
       "version_or_date": "FDA Drug Safety Communication 2020-10-15",
       "excerpt": "FDA warns that NSAID use around 20 weeks of pregnancy or later can cause fetal renal dysfunction and oligohydramnios; prescribing should generally be limited between 20 and 30 weeks and avoided after about 30 weeks, with the stated low-dose aspirin exception.",
-      "tags": ["pregnancy", "nsaid", "fetal_renal", "oligohydramnios", "ibuprofen", "naproxen", "pregnancy_risk"],
+      "tags": [
+        "pregnancy",
+        "nsaid",
+        "fetal_renal",
+        "oligohydramnios",
+        "ibuprofen",
+        "naproxen",
+        "pregnancy_risk"
+      ],
       "source_url": "https://www.fda.gov/drugs/drug-safety-and-availability/fda-recommends-avoiding-use-nsaids-pregnancy-20-weeks-or-later-because-they-can-result-low-amniotic",
       "source_org": "U.S. Food and Drug Administration",
       "source_type": "government_safety_communication",
@@ -66,13 +98,65 @@
       "title": "Sepsis — life-threatening emergency and warning signs",
       "version_or_date": "CDC page updated 2026-08-17",
       "excerpt": "CDC describes sepsis as a life-threatening medical emergency and lists warning features including confusion or disorientation, extreme pain or discomfort, fever or feeling very cold, high heart rate or weak pulse, clammy skin, and shortness of breath.",
-      "tags": ["sepsis", "infection", "red_flag", "emergency", "confusion", "tachycardia", "shortness_of_breath"],
+      "tags": [
+        "sepsis",
+        "infection",
+        "red_flag",
+        "emergency",
+        "confusion",
+        "tachycardia",
+        "shortness_of_breath"
+      ],
       "source_url": "https://www.cdc.gov/sepsis/about/index.html",
       "source_org": "U.S. Centers for Disease Control and Prevention",
       "source_type": "government_clinical_guidance",
       "effective_date": "2026-08-17",
       "accessed_at": "2026-09-27",
       "source_locator": "About Sepsis — Key points and Signs and symptoms"
+    },
+    {
+      "evidence_id": "DM_METFORMIN_EGFR_2026",
+      "source": "DailyMed current U.S. prescribing information for metformin hydrochloride",
+      "title": "Metformin — renal impairment thresholds",
+      "version_or_date": "DailyMed label section revision 2026-08-21",
+      "excerpt": "Metformin labeling contraindicates use when eGFR is below 30 mL/min/1.73 m², discourages initiation when eGFR is 30–45, and requires reassessment or discontinuation as renal function declines.",
+      "tags": [
+        "metformin",
+        "renal",
+        "kidney",
+        "egfr",
+        "contraindication",
+        "renal_impairment",
+        "diabetes"
+      ],
+      "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=073cf6d9-7142-4d8b-898e-174c62a1f76f",
+      "source_org": "U.S. National Library of Medicine / DailyMed",
+      "source_type": "regulatory_label",
+      "effective_date": "2026-08-21",
+      "accessed_at": "2026-09-27",
+      "source_locator": "Section 2.3, Recommendations for Use in Renal Impairment"
+    },
+    {
+      "evidence_id": "DM_IBUPROFEN_ASPIRIN_ASTHMA_2026",
+      "source": "DailyMed current U.S. prescribing information for ibuprofen tablets",
+      "title": "Ibuprofen — aspirin-sensitive asthma and NSAID cross-reactivity",
+      "version_or_date": "DailyMed label section revision 2026-07-31",
+      "excerpt": "Ibuprofen labeling states that patients with asthma or allergic-type reactions after aspirin or other NSAIDs should not receive ibuprofen, and warns about severe bronchospasm in aspirin-sensitive asthma.",
+      "tags": [
+        "ibuprofen",
+        "nsaid",
+        "asthma",
+        "aspirin_sensitive",
+        "bronchospasm",
+        "contraindication",
+        "disease_drug_interaction"
+      ],
+      "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=0fa4cd66-66ad-4ec9-b38c-6b5840df39df",
+      "source_org": "U.S. National Library of Medicine / DailyMed",
+      "source_type": "regulatory_label",
+      "effective_date": "2026-07-31",
+      "accessed_at": "2026-09-27",
+      "source_locator": "Contraindications; Preexisting asthma"
     }
   ]
 }
