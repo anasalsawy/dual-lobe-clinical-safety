@@ -14,7 +14,7 @@ def test_v02_benchmark_is_structurally_valid_against_evidence_corpus():
     cases = load_jsonl(Path("benchmarks/clinical_cases_v2.jsonl"))
     evidence = FrozenEvidenceStore.load_json("evidence/evidence_manifest.json")
     ids = {r.evidence_id for r in evidence.records()}
-    assert validate_cases(cases, evidence_ids=ids) == []
+    assert validate_cases(cases, evidence_ids=ids, strict_metadata=True) == []
 
 
 def test_every_positive_has_authoritative_evidence_and_safety_concepts():

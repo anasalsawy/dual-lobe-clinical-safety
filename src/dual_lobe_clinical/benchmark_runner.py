@@ -99,6 +99,8 @@ async def run_case(case: dict[str, Any], arm: str, evidence_path: str) -> dict[s
     return {
         "case_id": case["case_id"],
         "pair_id": case.get("pair_id"),
+        "patient_context": case.get("patient_context"),
+        "query": case.get("query"),
         "domain": case.get("domain"),
         "difficulty": case.get("difficulty"),
         "arm": arm,
@@ -112,8 +114,13 @@ def _sha256(path: str | Path) -> str:
 
 
 def validate_study_inputs(args, cases: list[dict[str, Any]]) -> None:
-    assert_valid_cases(cases)
     evidence = FrozenEvidenceStore.load_json(args.evidence)
+    evidence_id_set = {r.evidence_id for r in evidence.records()}
+    assert_valid_cases(
+        cases,
+        evidence_ids=evidence_id_set if args.study_mode == "primary" else None,
+        strict_metadata=(args.study_mode == "primary"),
+    )
     if args.study_mode == "primary":
         if any(bool(c.get("development_only")) for c in cases):
             raise ValueError("primary study refuses development_only benchmark cases")
@@ -156,7 +163,7 @@ async def main_async(args) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--cases", default="benchmarks/clinical_cases_v1.jsonl")
+    p.add_argument("--cases", default="benchmarks/clinical_cases_v2.jsonl")
     p.add_argument("--arms", default="A0,A1,A2,A3")
     p.add_argument("--evidence", default="evidence/evidence_manifest.json")
     p.add_argument("--output", default="results/raw_results.jsonl")
