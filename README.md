@@ -1,48 +1,63 @@
 # Dual-Lobe Clinical Safety
 
-Publication-grade clinical safety research implementation derived from the general-purpose `dual-lobe-proxy` architecture.
+Research implementation derived from the general-purpose Dual-Lobe runtime.
 
 ## Research objective
 
-Evaluate whether an **independent supervisory inference pathway** can detect clinically important, context-dependent hazards that are omitted from the user's explicit question better than single-model generation or self-review, while controlling false alarms and unnecessary blocking.
+Evaluate whether an independent supervisory inference pathway can detect
+clinically important, context-dependent hazards that are omitted from the
+explicit user question while controlling false alarms and unnecessary blocking.
 
-## Experimental arms
+## Core architecture
 
-- **A0 — Single model baseline**
-- **A1 — Single model + self-review**
-- **A2 — Independent Dual-Lobe supervisor**
-- **A3 — Dual-Lobe supervisor + traceable medical evidence retrieval**
+1. A receives the task and acts as the primary worker/delegator.
+2. B begins an independent pre-answer safety/context pass before seeing A's final answer.
+3. The runtime may supply B with additional supervisory information from context, tools, retrieval, or other configured sources.
+4. A executes while observable tool/delegation/runtime events are recorded.
+5. B later receives A's exact candidate answer plus the observable execution/provenance trace and performs a final adversarial clinical audit.
+6. A deterministic gate resolves disagreement and decides PASS, WARN, REVISE, BLOCK, ESCALATE, or INSUFFICIENT_EVIDENCE.
+7. Only PASS/WARN release the candidate in the clinical research runtime.
 
-## Reviewer-driven requirements
+## Clinical safety functions
 
-This repository is designed to make the following elements explicit and reproducible:
+- context broadening and omitted-hazard detection;
+- contraindication, interaction, allergy, renal/hepatic, pregnancy/lactation,
+  age-specific, and urgent-red-flag checks;
+- claim-by-claim final audit;
+- disagreement handling;
+- fail-closed malformed/ungrounded supervisor handling;
+- privacy supervision;
+- observable trace fingerprinting.
 
-1. formal control logic;
-2. evidence retrieval;
-3. disagreement policy;
-4. predefined failure taxonomy;
-5. working implementation;
-6. comparison against verifier/supervisory baselines;
-7. empirical/simulated evaluation;
-8. false-alarm and automation-risk measurement;
-9. reproducible methods, prompts, configurations, and results.
+## Privacy
 
-## Safety and scope
+The clinical runtime sanitizes direct identifiers before inference, replaces
+known identifiers with run-scoped opaque tokens backed by an AES-256-GCM local
+vault, sanitizes observable traces, can locally rehydrate released text, and
+destroys the run key on completion on a best-effort basis.
 
-This is a **research system**, not a clinical decision-support product and not for patient care. Initial evaluation should use synthetic or de-identified clinical vignettes and frozen evidence sources. Claims about safety must remain limited to the measured benchmark conditions.
+## Evaluation
 
-## Parent project
+The repository includes paired latent-hazard clinical cases, matched negative
+controls, privacy cases, stress/failure-injection cases, clinician gold-label
+review, blinded output adjudication, study freezing, result hashing, and
+programmatic statistical scoring.
 
-Derived from `anasalsawy/dual-lobe-proxy`. The parent architecture provides persistent A/B roles, live supervisory observation, anti-deception verification, memory, and benchmark scaffolding.
+## Related work
 
+The manuscript should cite representative verifier/supervisor approaches and
+compare control flow, context visibility, persistence, and disagreement
+handling. The repository does not define separate verifier-comparison
+architectures as part of the core system.
 
-## Clinical runtime
+## Scope
 
-The clinical research runtime now uses a **two-pass B**:
+This is a research system, not a clinical decision-support product and not for
+patient care. Claims must remain limited to measured study conditions.
 
-1. **Independent pass (concurrent with A):** B sees the original query, patient context, and frozen retrieved evidence, but not A's answer. It constructs safety obligations without answer anchoring.
-2. **Final adversarial audit:** after A and delegated work finish, B receives A's exact answer, its prior independent assessment, the full observable execution/provenance trace, delegated results, and the same frozen evidence. B must construct a claim ledger for every material clinical claim.
+## Parent runtime
 
-A deterministic gate then decides whether the candidate may be released. The research runtime is fail-closed: only `PASS` and `WARN` release the candidate; `REVISE`, `BLOCK`, `ESCALATE`, and `INSUFFICIENT_EVIDENCE` withhold it.
-
-The runtime records the count and SHA-256 fingerprint of the observable A/child trace supplied to final B. This does **not** claim access to a model's hidden chain-of-thought; it proves which observable tool/delegation/runtime events were available to B.
+The inherited general Dual-Lobe layer provides persistent A/B roles, live B
+observation, anti-deception verification, delegation, consultation, memory,
+provider controls, group identity/floor control, loop execution, and benchmark
+scaffolding.
