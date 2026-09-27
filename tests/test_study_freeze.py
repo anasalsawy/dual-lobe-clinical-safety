@@ -5,8 +5,12 @@ import pytest
 from dual_lobe_clinical.benchmark_runner import validate_study_inputs
 
 
-def args(mode, evidence):
-    return SimpleNamespace(study_mode=mode, evidence=str(evidence))
+def args(mode, evidence, guardian_manifest="guardian/guardian_manifest.json"):
+    return SimpleNamespace(
+        study_mode=mode,
+        evidence=str(evidence),
+        guardian_manifest=str(guardian_manifest),
+    )
 
 
 def paired_cases(*, development_only=False):

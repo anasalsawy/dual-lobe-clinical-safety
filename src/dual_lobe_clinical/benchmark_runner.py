@@ -16,6 +16,7 @@ from dual_lobe_crewai.runner import run_one
 from dual_lobe_clinical.benchmark_validation import assert_valid_cases
 from dual_lobe_clinical.engine import ClinicalDualLobeEngine
 from dual_lobe_clinical.evidence import FrozenEvidenceStore
+from dual_lobe_clinical.guardian import GuardianModelManifest
 
 
 def to_primitive(value: Any) -> Any:
@@ -114,6 +115,8 @@ def validate_study_inputs(args, cases: list[dict[str, Any]]) -> None:
             raise ValueError("primary study refuses development_only benchmark cases")
         if not evidence.records():
             raise ValueError("primary study refuses an empty evidence corpus")
+        guardian = GuardianModelManifest.load(args.guardian_manifest)
+        guardian.assert_primary_ready(root=Path(args.guardian_manifest).parent.parent)
 
 
 async def main_async(args) -> None:
@@ -130,6 +133,8 @@ async def main_async(args) -> None:
         "cases_sha256": _sha256(args.cases),
         "evidence_path": str(args.evidence),
         "evidence_sha256": _sha256(args.evidence),
+        "guardian_manifest_path": str(args.guardian_manifest),
+        "guardian_manifest_sha256": _sha256(args.guardian_manifest),
         "arms": arms,
         "case_ids": [c["case_id"] for c in cases],
     }
@@ -151,6 +156,7 @@ def main() -> None:
     p.add_argument("--evidence", default="evidence/evidence_manifest.json")
     p.add_argument("--output", default="results/raw_results.jsonl")
     p.add_argument("--study-mode", choices=["development", "primary"], default="development")
+    p.add_argument("--guardian-manifest", default="guardian/guardian_manifest.json")
     args = p.parse_args()
     asyncio.run(main_async(args))
 
