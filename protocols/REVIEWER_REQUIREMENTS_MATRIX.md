@@ -96,3 +96,32 @@ Current development benchmark: 28 cases / 14 matched pairs / 7 authoritative-evi
 
 No row marked EXTERNAL-EVIDENCE REQUIRED should be represented as solved until the
 human/model study work is actually completed.
+
+
+## Current study-package status
+
+As of the latest development package:
+
+- Clinical benchmark: **48 synthetic cases / 24 matched pairs / 12 clinical domains**
+- Privacy benchmark: **10 cases / 5 matched pairs** covering F19-F23
+- Stress challenge set: **6 fail-closed/escalation cases**
+- Gold-label clinician review workflow: implemented
+- Blinded model-output adjudication workflow: implemented
+- Pair-aware statistical analysis: implemented
+- Primary-study freeze tool: implemented and clinician-gated
+- Evidence corpus: 12 authoritative development records/domains, still intentionally not primary_frozen
+- Local B guardian manifest: implemented; real fine-tuned guardian artifact still must be supplied and frozen
+
+### Remaining items that cannot be completed by code alone
+
+1. Obtain at least two clinician reviews per clinical vignette and adjudicate disagreements.
+2. Freeze the actual local fine-tuned B guardian artifact and its SHA-256.
+3. Complete the final literature extraction/search and confirm no closer prior art changes the novelty framing.
+4. Run the frozen A0/A1/A2/A3 experiment.
+5. Perform blinded output adjudication.
+6. Generate and report the locked statistical results.
+7. Write the final Results, Error Analysis, Discussion, and Limitations from those artifacts.
+
+Until those steps are complete, the repository should be described as
+**study-ready infrastructure / development benchmark**, not as evidence that
+the architecture is clinically superior.
