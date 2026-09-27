@@ -115,17 +115,21 @@ def _sha256(path: str | Path) -> str:
 
 def validate_study_inputs(args, cases: list[dict[str, Any]]) -> None:
     evidence = FrozenEvidenceStore.load_json(args.evidence)
+
+    if args.study_mode == "primary":
+        if any(bool(c.get("development_only")) for c in cases):
+            raise ValueError("primary study refuses development_only benchmark cases")
+        if not evidence.records():
+            raise ValueError("primary study refuses an empty evidence corpus")
+
     evidence_id_set = {r.evidence_id for r in evidence.records()}
     assert_valid_cases(
         cases,
         evidence_ids=evidence_id_set if args.study_mode == "primary" else None,
         strict_metadata=(args.study_mode == "primary"),
     )
+
     if args.study_mode == "primary":
-        if any(bool(c.get("development_only")) for c in cases):
-            raise ValueError("primary study refuses development_only benchmark cases")
-        if not evidence.records():
-            raise ValueError("primary study refuses an empty evidence corpus")
         assert_valid_evidence_manifest(args.evidence, require_primary_frozen=True)
         guardian = GuardianModelManifest.load(args.guardian_manifest)
         guardian.assert_primary_ready(root=Path(args.guardian_manifest).parent.parent)
