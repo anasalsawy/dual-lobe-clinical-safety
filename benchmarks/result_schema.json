@@ -1,0 +1,45 @@
+{
+  "case_id": "",
+  "repeat": 1,
+  "variant": "gated|non-split|split",
+  "provider": "",
+  "models": {
+    "a": "",
+    "b_verify": "",
+    "b_worker": ""
+  },
+  "timings_ms": {
+    "total": null,
+    "a": null,
+    "b_verify": null,
+    "a_route_and_work": null,
+    "route_decision": null,
+    "a_half": null,
+    "b_half": null,
+    "parallel_window": null,
+    "overlap": null,
+    "b_review": null,
+    "parallel_gain_proxy": null,
+    "join_wait": null,
+    "b_finalize_verify": null
+  },
+  "counts": {
+    "logical_model_calls": 0,
+    "provider_attempts": null,
+    "tool_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+  },
+  "route": "normal|split|null",
+  "route_source": "a_self_normal|a_self_split|null",
+  "split_score": null,
+  "split_valid": null,
+  "split_time_effect": null,
+  "split_unnecessary": null,
+  "missed_valid_split": null,
+  "verdict": null,
+  "task_score": null,
+  "checklist_items_satisfied": [],
+  "critical_errors": [],
+  "answer": ""
+}
