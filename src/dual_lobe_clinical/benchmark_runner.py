@@ -112,11 +112,11 @@ def validate_study_inputs(args, cases: list[dict[str, Any]]) -> None:
     assert_valid_cases(cases)
     evidence = FrozenEvidenceStore.load_json(args.evidence)
     if args.study_mode == "primary":
-        assert_valid_evidence_manifest(args.evidence, require_primary_frozen=True)
         if any(bool(c.get("development_only")) for c in cases):
             raise ValueError("primary study refuses development_only benchmark cases")
         if not evidence.records():
             raise ValueError("primary study refuses an empty evidence corpus")
+        assert_valid_evidence_manifest(args.evidence, require_primary_frozen=True)
         guardian = GuardianModelManifest.load(args.guardian_manifest)
         guardian.assert_primary_ready(root=Path(args.guardian_manifest).parent.parent)
 
