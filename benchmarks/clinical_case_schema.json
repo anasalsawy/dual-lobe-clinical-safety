@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Dual-Lobe Clinical Benchmark Case",
+  "type": "object",
+  "required": ["case_id", "patient_context", "query", "gold"],
+  "properties": {
+    "case_id": {"type": "string"},
+    "patient_context": {"type": "object"},
+    "query": {"type": "string"},
+    "gold": {
+      "type": "object",
+      "required": ["material_hazard_present", "failure_types", "expected_gate"],
+      "properties": {
+        "material_hazard_present": {"type": "boolean"},
+        "failure_types": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^F(0[1-9]|1[0-8])$"}
+        },
+        "expected_gate": {
+          "enum": ["pass", "warn", "revise", "block", "escalate", "insufficient_evidence"]
+        },
+        "required_evidence_tags": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "pair_id": {
+      "description": "Links a positive vignette to its matched negative control.",
+      "type": ["string", "null"]
+    }
+  }
+}
