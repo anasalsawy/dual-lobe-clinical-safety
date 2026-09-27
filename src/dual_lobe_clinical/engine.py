@@ -3,10 +3,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import os
 import time
 from dataclasses import asdict, dataclass, field, replace
-from pathlib import Path
 from typing import Callable
 
 from dual_lobe_crewai.agents import make_b_adversary
@@ -21,7 +19,6 @@ from dual_lobe_crewai.tools import (
 )
 
 from .control_gate import SafetyGate
-from .evidence import FrozenEvidenceStore
 from .parsing import assessment_from_json, merge_assessments
 from .prompts import build_final_audit_prompt, build_independent_prompt
 from .schemas import Decision, GateResult, SupervisorAssessment
@@ -43,7 +40,8 @@ class ClinicalRunResult:
     independent_assessment: SupervisorAssessment
     final_assessment: SupervisorAssessment
     merged_assessment: SupervisorAssessment
-    retrieved_evidence_ids: tuple[str, ...] = ()
+    supervisory_context_supplied: bool = False
+    supervisory_context_sha256: str = ""
     trace_event_count: int = 0
     trace_sha256: str = ""
     timings_ms: dict[str, int | float] = field(default_factory=dict)
@@ -57,14 +55,12 @@ class ClinicalRunResult:
 
 
 class ClinicalDualLobeEngine(DualLobeEngine):
-    """Publication-oriented clinical safety runtime.
+    """Clinical Dual-Lobe runtime.
 
-    B performs two distinct jobs:
-    1) an independent, pre-answer safety pass that cannot be anchored by A;
-    2) a final claim-by-claim adversarial audit of A plus the complete observable
-       execution/provenance trace.
-
-    Deterministic code then decides whether A's answer may be released.
+    B first forms an independent pre-answer safety view from the original
+    context plus any additional supervisory information supplied by the runtime.
+    B later audits A's exact answer and observable execution/provenance trace.
+    Deterministic code owns the release decision.
     """
 
     name = "dual-lobe-clinical"
@@ -72,8 +68,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
     def __init__(
         self,
         *,
-        evidence_store: FrozenEvidenceStore | None = None,
-        evidence_path: str | Path | None = None,
+        supervisory_context_provider: Callable[[str, str], str] | None = None,
         memory=None,
         b_memory=None,
         privacy_guard: PrivacyGuard | None = None,
@@ -87,36 +82,27 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         super().__init__(memory=memory, b_memory=b_memory)
         self.privacy_guard = privacy_guard or PrivacyGuard(provider_privacy_policy)
         self.enable_live_b = bool(enable_live_b)
-        if evidence_store is not None:
-            self.evidence = evidence_store
-        else:
-            path = Path(
-                evidence_path
-                or os.getenv("DUAL_LOBE_CLINICAL_EVIDENCE", "evidence/evidence_manifest.json")
-            )
-            self.evidence = (
-                FrozenEvidenceStore.load_json(path)
-                if path.exists()
-                else FrozenEvidenceStore()
-            )
-        self.gate = SafetyGate(self.evidence)
+        self.supervisory_context_provider = supervisory_context_provider
+        self.gate = SafetyGate()
 
-    def _retrieve_evidence(self, *, query: str, patient_context: str):
-        search_text = f"{query}\n{patient_context}"
-        return self.evidence.retrieve(search_text, limit=12)
+    def _supervisory_context(self, *, query: str, patient_context: str) -> str:
+        if self.supervisory_context_provider is None:
+            return ""
+        value = self.supervisory_context_provider(query, patient_context)
+        return str(value or "").strip()
 
     async def _independent_pass(
         self,
         *,
         query: str,
         patient_context: str,
-        evidence_text: str,
+        supervisory_context: str,
     ) -> SupervisorAssessment:
         b = make_b_adversary(tools=None, llm_role="B_CLINICAL")
         prompt = build_independent_prompt(
             query=query,
             patient_context=patient_context,
-            evidence_text=evidence_text,
+            supervisory_context=supervisory_context,
         )
         raw = await self._safe_run_one(
             b,
@@ -136,7 +122,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         independent: SupervisorAssessment,
         trace_text: str,
         delegated_results: str,
-        evidence_text: str,
+        supervisory_context: str,
         privacy_receipt_json: str,
         privacy_trace_identifier_types: str,
     ) -> SupervisorAssessment:
@@ -153,7 +139,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             a_answer=a_answer,
             delegated_results=delegated_results,
             trace_text=trace_text,
-            evidence_text=evidence_text,
+            supervisory_context=supervisory_context,
             privacy_receipt_json=privacy_receipt_json,
             privacy_trace_identifier_types=privacy_trace_identifier_types,
         )
@@ -164,15 +150,10 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             fallback_text='{"supervisor_claims_grounded": false, "notes": ["final B audit failed"]}',
             role_key="B_CLINICAL",
         )
-        if b_trace.events:
-            # B's own tool activity is evidence about the audit itself. It is
-            # intentionally not inserted into A's historical trace fingerprint.
-            pass
         return assessment_from_json(raw)
 
     @staticmethod
     def _release(candidate: str, gate: GateResult) -> str | None:
-        # Research runtime is fail-closed for any unresolved material concern.
         if gate.decision in {Decision.PASS, Decision.WARN}:
             return candidate
         return None
@@ -194,8 +175,6 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             vault=vault,
         )
 
-        # Raw caller strings are never inserted into model prompts, traces,
-        # persistent memory, or the returned audit artifact by this runtime.
         original_task = (
             "CLINICAL RESEARCH TASK\n"
             f"PATIENT_CONTEXT:\n{sanitized_context}\n\n"
@@ -207,9 +186,11 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         delegate_state = DelegateRunState()
         live_b_state = LiveBState()
 
-        retrieved = self._retrieve_evidence(query=sanitized_query, patient_context=sanitized_context)
-        evidence_text = self.evidence.render(retrieved)
-        retrieved_ids = tuple(r.evidence_id for r in retrieved)
+        supervisory_context = self._supervisory_context(
+            query=sanitized_query,
+            patient_context=sanitized_context,
+        )
+        context_hash = hashlib.sha256(supervisory_context.encode("utf-8")).hexdigest() if supervisory_context else ""
 
         live_monitor = LiveBMonitor(
             task=original_task,
@@ -220,13 +201,12 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         ) if self.enable_live_b else None
         live_task = asyncio.create_task(live_monitor.run()) if live_monitor else None
 
-        # This starts BEFORE A's answer exists. It cannot be anchored by A.
         independent_start = time.perf_counter()
         independent_task = asyncio.create_task(
             self._independent_pass(
                 query=sanitized_query,
                 patient_context=sanitized_context,
-                evidence_text=evidence_text,
+                supervisory_context=supervisory_context,
             )
         )
 
@@ -255,20 +235,13 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             independent = await independent_task
             timings["b_independent_ms"] = int((time.perf_counter() - independent_start) * 1000)
 
-            # Freeze A's observable run before the final audit. The exact text and
-            # hash are preserved so the publication can show what B actually saw.
             raw_trace_text = trace.render()
-            trace_text, trace_phi_types = self.privacy_guard.sanitize_trace(
-                raw_trace_text,
-                vault=vault,
-            )
-            delegated_results, delegated_phi_types = self.privacy_guard.sanitize_trace(
-                delegated_results,
-                vault=vault,
-            )
+            trace_text, trace_phi_types = self.privacy_guard.sanitize_trace(raw_trace_text, vault=vault)
+            delegated_results, delegated_phi_types = self.privacy_guard.sanitize_trace(delegated_results, vault=vault)
             privacy_trace_types = tuple(sorted(set(trace_phi_types) | set(delegated_phi_types)))
             trace_events = trace.snapshot_from(0)
             trace_sha256 = hashlib.sha256(trace_text.encode("utf-8")).hexdigest()
+
             privacy_receipt = replace(
                 privacy_receipt,
                 direct_identifier_types=tuple(
@@ -290,7 +263,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
                 independent=independent,
                 trace_text=trace_text,
                 delegated_results=delegated_results,
-                evidence_text=evidence_text,
+                supervisory_context=supervisory_context,
                 privacy_receipt_json=privacy_receipt_json,
                 privacy_trace_identifier_types=", ".join(privacy_trace_types) or "none",
             )
@@ -300,9 +273,6 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             gate_result = self.gate.evaluate(merged)
             released = self._release(a_answer, gate_result)
 
-            # Re-identification, when required by a local clinical UI, happens
-            # only here and is delivered through a callback. It is not stored
-            # in the returned run/audit object.
             if released is not None and local_delivery is not None:
                 local_delivery(vault.rehydrate_text(released))
         finally:
@@ -327,7 +297,8 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             independent_assessment=independent,
             final_assessment=final_assessment,
             merged_assessment=merged,
-            retrieved_evidence_ids=retrieved_ids,
+            supervisory_context_supplied=bool(supervisory_context),
+            supervisory_context_sha256=context_hash,
             trace_event_count=len(trace_events),
             trace_sha256=trace_sha256,
             timings_ms=timings,

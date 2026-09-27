@@ -3,15 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from dual_lobe_crewai.json_utils import extract_json_object
-
-from .schemas import (
-    ClaimAudit,
-    ClaimStatus,
-    FailureType,
-    HazardFinding,
-    Severity,
-    SupervisorAssessment,
-)
+from .schemas import ClaimAudit, ClaimStatus, FailureType, HazardFinding, Severity, SupervisorAssessment
 
 
 def _severity(value: object) -> Severity:
@@ -30,16 +22,15 @@ def _failure(value: object) -> FailureType:
 
 
 def _claim_status(value: object) -> ClaimStatus:
-    raw = str(value or "insufficient_evidence").lower()
     try:
-        return ClaimStatus(raw)
+        return ClaimStatus(str(value or "insufficient_evidence").lower())
     except ValueError:
         return ClaimStatus.INSUFFICIENT_EVIDENCE
 
 
 def assessment_from_mapping(data: Mapping[str, object] | None) -> SupervisorAssessment:
     data = data or {}
-    findings: list[HazardFinding] = []
+    findings = []
     for item in data.get("findings", []) or []:
         if not isinstance(item, Mapping):
             continue
@@ -47,31 +38,25 @@ def assessment_from_mapping(data: Mapping[str, object] | None) -> SupervisorAsse
             confidence = float(item.get("confidence", 0.0) or 0.0)
         except (TypeError, ValueError):
             confidence = 0.0
-        findings.append(
-            HazardFinding(
-                failure_type=_failure(item.get("failure_type")),
-                severity=_severity(item.get("severity")),
-                patient_fact=str(item.get("patient_fact") or "").strip(),
-                concern=str(item.get("concern") or "").strip(),
-                evidence_ids=tuple(str(x) for x in (item.get("evidence_ids") or []) if str(x).strip()),
-                confidence=max(0.0, min(1.0, confidence)),
-            )
-        )
+        findings.append(HazardFinding(
+            failure_type=_failure(item.get("failure_type")),
+            severity=_severity(item.get("severity")),
+            patient_fact=str(item.get("patient_fact") or "").strip(),
+            concern=str(item.get("concern") or "").strip(),
+            confidence=max(0.0, min(1.0, confidence)),
+        ))
 
-    audits: list[ClaimAudit] = []
+    audits = []
     for item in data.get("claim_audits", []) or []:
         if not isinstance(item, Mapping):
             continue
-        audits.append(
-            ClaimAudit(
-                claim_id=str(item.get("claim_id") or f"C{len(audits)+1}"),
-                claim_text=str(item.get("claim_text") or "").strip(),
-                status=_claim_status(item.get("status")),
-                severity_if_wrong=_severity(item.get("severity_if_wrong")),
-                evidence_ids=tuple(str(x) for x in (item.get("evidence_ids") or []) if str(x).strip()),
-                rationale=str(item.get("rationale") or "").strip(),
-            )
-        )
+        audits.append(ClaimAudit(
+            claim_id=str(item.get("claim_id") or f"C{len(audits)+1}"),
+            claim_text=str(item.get("claim_text") or "").strip(),
+            status=_claim_status(item.get("status")),
+            severity_if_wrong=_severity(item.get("severity_if_wrong")),
+            rationale=str(item.get("rationale") or "").strip(),
+        ))
 
     return SupervisorAssessment(
         findings=tuple(findings),
@@ -94,12 +79,12 @@ def assessment_from_json(raw: str) -> SupervisorAssessment:
 
 
 def merge_assessments(*items: SupervisorAssessment) -> SupervisorAssessment:
-    findings: list[HazardFinding] = []
-    seen_findings: set[tuple[str, str, str, str]] = set()
-    audits: list[ClaimAudit] = []
-    seen_claims: set[tuple[str, str]] = set()
-    missing: list[str] = []
-    notes: list[str] = []
+    findings = []
+    seen_findings = set()
+    audits = []
+    seen_claims = set()
+    missing = []
+    notes = []
 
     for item in items:
         for f in item.findings:

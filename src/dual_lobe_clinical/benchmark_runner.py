@@ -26,17 +26,11 @@ def to_primitive(value: Any) -> Any:
 
 
 def load_cases(path: str | Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line:
-            rows.append(json.loads(line))
-    return rows
+    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-async def run_case(case: dict[str, Any], evidence_path: str | None = None) -> dict[str, Any]:
-    engine = ClinicalDualLobeEngine(evidence_path=evidence_path) if evidence_path else ClinicalDualLobeEngine()
-    result = await engine.run_clinical(
+async def run_case(case: dict[str, Any]) -> dict[str, Any]:
+    result = await ClinicalDualLobeEngine().run_clinical(
         query=case["query"],
         patient_context=json.dumps(case["patient_context"], ensure_ascii=False),
     )
@@ -59,10 +53,7 @@ def _sha256(path: str | Path) -> str:
 def validate_study_inputs(args, cases: list[dict[str, Any]]) -> None:
     if args.study_mode == "primary" and any(bool(c.get("development_only")) for c in cases):
         raise ValueError("primary study refuses development_only benchmark cases")
-    assert_valid_cases(
-        cases,
-        strict_metadata=(args.study_mode == "primary"),
-    )
+    assert_valid_cases(cases, strict_metadata=(args.study_mode == "primary"))
     if args.study_mode == "primary":
         guardian = GuardianModelManifest.load(args.guardian_manifest)
         guardian.assert_primary_ready(root=Path(args.guardian_manifest).parent.parent)
@@ -84,30 +75,21 @@ async def main_async(args) -> None:
         "case_ids": [c["case_id"] for c in cases],
         "system": "dual_lobe_clinical",
     }
-    if getattr(args, "evidence", None):
-        manifest["optional_information_source_path"] = str(args.evidence)
-        manifest["optional_information_source_sha256"] = _sha256(args.evidence)
-
-    out.with_suffix(out.suffix + ".manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    out.with_suffix(out.suffix + ".manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     with out.open("w", encoding="utf-8") as f:
         for case in cases:
-            row = await run_case(case, getattr(args, "evidence", None))
-            f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+            f.write(json.dumps(await run_case(case), ensure_ascii=False, default=str) + "\n")
             f.flush()
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--cases", default="benchmarks/clinical_cases_v2.jsonl")
-    p.add_argument("--evidence", default="")
     p.add_argument("--output", default="results/raw_results.jsonl")
     p.add_argument("--study-mode", choices=["development", "primary"], default="development")
     p.add_argument("--guardian-manifest", default="guardian/guardian_manifest.json")
-    args = p.parse_args()
-    asyncio.run(main_async(args))
+    asyncio.run(main_async(p.parse_args()))
 
 
 if __name__ == "__main__":

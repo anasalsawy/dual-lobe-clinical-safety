@@ -42,18 +42,12 @@ class GuardianModelManifest:
             path = Path(root) / path
         if not path.exists() or not path.is_file():
             return False
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        return digest.lower() == self.artifact_sha256.lower()
+        return hashlib.sha256(path.read_bytes()).hexdigest().lower() == self.artifact_sha256.lower()
 
     def assert_primary_ready(self, *, root: str | Path = ".") -> None:
         if not self.configured:
             raise ValueError("clinical B guardian manifest is not fully configured")
-        required = {
-            "clinical_context_broadening",
-            "adversarial_claim_audit",
-            "privacy_oversight",
-            "evidence_discipline",
-        }
+        required = {"clinical_context_broadening","adversarial_claim_audit","privacy_oversight"}
         missing = required - set(self.intended_roles)
         if missing:
             raise ValueError(f"guardian manifest missing intended roles: {sorted(missing)}")

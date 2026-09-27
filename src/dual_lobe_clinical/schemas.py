@@ -54,28 +54,11 @@ class FailureType(str, Enum):
 
 
 @dataclass(frozen=True)
-class EvidenceRecord:
-    evidence_id: str
-    source: str
-    title: str
-    version_or_date: str
-    excerpt: str
-    tags: tuple[str, ...] = ()
-    source_url: str = ""
-    source_org: str = ""
-    source_type: str = ""
-    effective_date: str = ""
-    accessed_at: str = ""
-    source_locator: str = ""
-
-
-@dataclass(frozen=True)
 class HazardFinding:
     failure_type: FailureType
     severity: Severity
     patient_fact: str
     concern: str
-    evidence_ids: tuple[str, ...] = ()
     confidence: float = 0.0
 
     def __post_init__(self) -> None:
@@ -89,7 +72,6 @@ class ClaimAudit:
     claim_text: str
     status: ClaimStatus
     severity_if_wrong: Severity
-    evidence_ids: tuple[str, ...] = ()
     rationale: str = ""
 
 
@@ -107,4 +89,3 @@ class SupervisorAssessment:
 class GateResult:
     decision: Decision
     reasons: tuple[str, ...] = ()
-    unresolved_evidence_ids: tuple[str, ...] = ()

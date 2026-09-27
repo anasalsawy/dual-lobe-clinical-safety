@@ -1,5 +1,5 @@
 {
-  "manifest_version": "0.1.0",
+  "manifest_version": "0.2.0",
   "model_id": "",
   "base_model": "",
   "fine_tune_profile": "",
@@ -9,8 +9,7 @@
   "intended_roles": [
     "clinical_context_broadening",
     "adversarial_claim_audit",
-    "privacy_oversight",
-    "evidence_discipline"
+    "privacy_oversight"
   ],
   "notes": "Populate and freeze before the primary study. artifact_path should point to the local fine-tuned model or adapter artifact used by B."
 }
