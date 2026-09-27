@@ -109,8 +109,6 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         query: str,
         patient_context: str,
         evidence_text: str,
-        privacy_receipt_json: str = "{}",
-        privacy_trace_identifier_types: str = "none",
     ) -> SupervisorAssessment:
         b = make_b_adversary(tools=None)
         prompt = build_independent_prompt(
@@ -223,8 +221,6 @@ class ClinicalDualLobeEngine(DualLobeEngine):
                 query=sanitized_query,
                 patient_context=sanitized_context,
                 evidence_text=evidence_text,
-                privacy_receipt_json=privacy_receipt_json,
-                privacy_trace_identifier_types=", ".join(privacy_trace_types) or "none",
             )
         )
 
@@ -286,6 +282,8 @@ class ClinicalDualLobeEngine(DualLobeEngine):
                 trace_text=trace_text,
                 delegated_results=delegated_results,
                 evidence_text=evidence_text,
+                privacy_receipt_json=privacy_receipt_json,
+                privacy_trace_identifier_types=", ".join(privacy_trace_types) or "none",
             )
             timings["b_final_audit_ms"] = int((time.perf_counter() - audit_start) * 1000)
 

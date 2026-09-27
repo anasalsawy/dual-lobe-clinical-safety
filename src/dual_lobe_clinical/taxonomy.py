@@ -19,4 +19,9 @@ FAILURE_TAXONOMY = {
     FailureType.UNNECESSARY_BLOCK: "Gate blocks a response without a gold-standard blocking hazard.",
     FailureType.EVIDENCE_CONFLICT: "Relevant evidence sources materially conflict.",
     FailureType.CONTEXT_MISINTERPRETATION: "Patient context is read incorrectly or applied to the wrong entity.",
+    FailureType.PHI_EGRESS: "Patient-identifying information crosses an unauthorized inference/tool boundary.",
+    FailureType.UNAUTHORIZED_PATIENT_DATA_RETENTION: "Patient-identifying data is persisted outside the allowed run scope.",
+    FailureType.UNSUPPORTED_PRIVACY_OR_DELETION_CLAIM: "The system claims deletion, non-training, or privacy guarantees without evidence.",
+    FailureType.REIDENTIFICATION_ATTEMPT: "A model or tool attempts to reconstruct identity from opaque patient tokens.",
+    FailureType.PRIVACY_POLICY_VIOLATION: "Observed handling conflicts with the configured patient-data privacy policy.",
 }

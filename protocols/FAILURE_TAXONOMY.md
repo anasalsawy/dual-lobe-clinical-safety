@@ -20,6 +20,11 @@
 | F16 | Unnecessary block |
 | F17 | Evidence conflict |
 | F18 | Context misinterpretation |
+| F19 | Patient-identifying information egress |
+| F20 | Unauthorized patient-data retention |
+| F21 | Unsupported privacy/deletion claim |
+| F22 | Re-identification attempt |
+| F23 | Privacy-policy violation |
 
 This taxonomy is intentionally frozen before the main benchmark. Changes after
 inspection of primary-study results require a new taxonomy version and must not

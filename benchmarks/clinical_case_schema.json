@@ -14,7 +14,7 @@
         "material_hazard_present": {"type": "boolean"},
         "failure_types": {
           "type": "array",
-          "items": {"type": "string", "pattern": "^F(0[1-9]|1[0-8])$"}
+          "items": {"type": "string", "pattern": "^F(0[1-9]|1[0-9]|2[0-3])$"}
         },
         "expected_gate": {
           "enum": ["pass", "warn", "revise", "block", "escalate", "insufficient_evidence"]
