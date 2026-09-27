@@ -21,4 +21,4 @@ dual-lobe = "dual_lobe_crewai.main:main"
 dual-lobe-clinical = "dual_lobe_clinical.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dual_lobe_crewai", "src/dual_lobe_clinical"]
+packages = ["src/dual_lobe_crewai", "src/dual_lobe_clinical", "evaluation"]
