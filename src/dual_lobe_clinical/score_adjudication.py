@@ -9,6 +9,7 @@ from dual_lobe_clinical.adjudication import (
     consensus_by_sample,
 )
 from dual_lobe_clinical.adjudicated_metrics import calculate_from_adjudicated_rows
+from dual_lobe_clinical.statistics import add_confidence_intervals, paired_arm_comparison
 
 
 def load_jsonl(path: str) -> list[dict]:
@@ -41,9 +42,16 @@ def main() -> None:
     if not scored_rows:
         raise SystemExit("No locked consensus rows available for scoring.")
 
-    metrics = calculate_from_adjudicated_rows(scored_rows)
-    Path(args.output).write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-    print(json.dumps(metrics, indent=2))
+    metrics = add_confidence_intervals(calculate_from_adjudicated_rows(scored_rows))
+    comparisons = [
+        paired_arm_comparison(scored_rows, arm_a="A0", arm_b="A1"),
+        paired_arm_comparison(scored_rows, arm_a="A0", arm_b="A2"),
+        paired_arm_comparison(scored_rows, arm_a="A1", arm_b="A2"),
+        paired_arm_comparison(scored_rows, arm_a="A2", arm_b="A3"),
+    ]
+    payload = {"arms": metrics, "paired_comparisons": comparisons}
+    Path(args.output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(json.dumps(payload, indent=2))
 
 
 if __name__ == "__main__":
