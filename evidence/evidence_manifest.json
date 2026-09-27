@@ -1,6 +1,78 @@
 {
-  "corpus_version": "0.1.0-empty",
-  "status": "placeholder",
-  "description": "No clinical evidence has been inserted yet. Populate only from traceable, versioned sources before benchmark execution.",
-  "records": []
+  "corpus_version": "0.2.0-authoritative-seed",
+  "status": "development_validated",
+  "description": "Authoritative seed corpus for development and benchmark construction. Records are concise normalized clinical propositions derived from traceable official U.S. sources. This corpus is intentionally not marked primary_frozen until coverage review is complete.",
+  "accessed_at": "2026-09-27",
+  "records": [
+    {
+      "evidence_id": "DM_WARFARIN_NSAID_BLEED_2026",
+      "source": "DailyMed current U.S. prescribing information for warfarin sodium",
+      "title": "Warfarin sodium — drugs that increase bleeding risk",
+      "version_or_date": "Current DailyMed label accessed 2026-09-27; section 7.3",
+      "excerpt": "The warfarin label identifies nonsteroidal anti-inflammatory drugs, including ibuprofen and naproxen, among concomitant medicines that increase bleeding risk and calls for close monitoring when used together.",
+      "tags": ["warfarin", "anticoagulation", "nsaid", "ibuprofen", "naproxen", "bleeding", "drug_interaction"],
+      "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=5a5b5e3a-6556-a542-e063-6294a90a6d3f",
+      "source_org": "U.S. National Library of Medicine / DailyMed",
+      "source_type": "regulatory_label",
+      "effective_date": "2022-11-30",
+      "accessed_at": "2026-09-27",
+      "source_locator": "Section 7.3, Drugs that Increase Bleeding Risk"
+    },
+    {
+      "evidence_id": "DM_IBUPROFEN_RENAL_2026",
+      "source": "DailyMed current U.S. prescribing information for ibuprofen tablets",
+      "title": "Ibuprofen — renal effects and advanced renal disease",
+      "version_or_date": "DailyMed label section revision 2026-08-26",
+      "excerpt": "Ibuprofen labeling identifies impaired renal function as a risk factor for NSAID-related renal decompensation and states that treatment is not recommended in advanced renal disease unless benefits justify use with renal monitoring.",
+      "tags": ["ibuprofen", "nsaid", "renal", "kidney", "advanced_renal_disease", "analgesic", "renal_impairment"],
+      "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=2572ed69-d5a7-4513-a202-aca3230e7ec5",
+      "source_org": "U.S. National Library of Medicine / DailyMed",
+      "source_type": "regulatory_label",
+      "effective_date": "2026-08-26",
+      "accessed_at": "2026-09-27",
+      "source_locator": "Renal Effects; Advanced Renal Disease"
+    },
+    {
+      "evidence_id": "DM_AMOXICILLIN_BETALACTAM_ALLERGY_2026",
+      "source": "DailyMed current U.S. prescribing information for amoxicillin",
+      "title": "Amoxicillin — serious beta-lactam hypersensitivity contraindication",
+      "version_or_date": "DailyMed label section revision 2026-07-20",
+      "excerpt": "Amoxicillin is contraindicated in patients with a history of serious hypersensitivity reactions to amoxicillin or other beta-lactam antibacterial drugs, including penicillins and cephalosporins.",
+      "tags": ["amoxicillin", "penicillin", "beta_lactam", "allergy", "hypersensitivity", "anaphylaxis", "contraindication"],
+      "source_url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=b07b5ac4-253e-4c83-91c3-3fdc46e91a0f",
+      "source_org": "U.S. National Library of Medicine / DailyMed",
+      "source_type": "regulatory_label",
+      "effective_date": "2026-07-20",
+      "accessed_at": "2026-09-27",
+      "source_locator": "Section 4, Contraindications; Section 5.1, Anaphylactic Reactions"
+    },
+    {
+      "evidence_id": "FDA_NSAID_PREGNANCY_20W_2020",
+      "source": "FDA Drug Safety Communication",
+      "title": "NSAID use in pregnancy at 20 weeks or later",
+      "version_or_date": "FDA Drug Safety Communication 2020-10-15",
+      "excerpt": "FDA warns that NSAID use around 20 weeks of pregnancy or later can cause fetal renal dysfunction and oligohydramnios; prescribing should generally be limited between 20 and 30 weeks and avoided after about 30 weeks, with the stated low-dose aspirin exception.",
+      "tags": ["pregnancy", "nsaid", "fetal_renal", "oligohydramnios", "ibuprofen", "naproxen", "pregnancy_risk"],
+      "source_url": "https://www.fda.gov/drugs/drug-safety-and-availability/fda-recommends-avoiding-use-nsaids-pregnancy-20-weeks-or-later-because-they-can-result-low-amniotic",
+      "source_org": "U.S. Food and Drug Administration",
+      "source_type": "government_safety_communication",
+      "effective_date": "2020-10-15",
+      "accessed_at": "2026-09-27",
+      "source_locator": "Additional Information for Health Care Professionals"
+    },
+    {
+      "evidence_id": "CDC_SEPSIS_SIGNS_2026",
+      "source": "CDC Sepsis clinical/public health guidance",
+      "title": "Sepsis — life-threatening emergency and warning signs",
+      "version_or_date": "CDC page updated 2026-08-17",
+      "excerpt": "CDC describes sepsis as a life-threatening medical emergency and lists warning features including confusion or disorientation, extreme pain or discomfort, fever or feeling very cold, high heart rate or weak pulse, clammy skin, and shortness of breath.",
+      "tags": ["sepsis", "infection", "red_flag", "emergency", "confusion", "tachycardia", "shortness_of_breath"],
+      "source_url": "https://www.cdc.gov/sepsis/about/index.html",
+      "source_org": "U.S. Centers for Disease Control and Prevention",
+      "source_type": "government_clinical_guidance",
+      "effective_date": "2026-08-17",
+      "accessed_at": "2026-09-27",
+      "source_locator": "About Sepsis — Key points and Signs and symptoms"
+    }
+  ]
 }

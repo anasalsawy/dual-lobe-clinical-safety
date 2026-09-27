@@ -16,6 +16,7 @@ from dual_lobe_crewai.runner import run_one
 from dual_lobe_clinical.benchmark_validation import assert_valid_cases
 from dual_lobe_clinical.engine import ClinicalDualLobeEngine
 from dual_lobe_clinical.evidence import FrozenEvidenceStore
+from dual_lobe_clinical.evidence_validation import assert_valid_evidence_manifest
 from dual_lobe_clinical.guardian import GuardianModelManifest
 
 
@@ -111,6 +112,7 @@ def validate_study_inputs(args, cases: list[dict[str, Any]]) -> None:
     assert_valid_cases(cases)
     evidence = FrozenEvidenceStore.load_json(args.evidence)
     if args.study_mode == "primary":
+        assert_valid_evidence_manifest(args.evidence, require_primary_frozen=True)
         if any(bool(c.get("development_only")) for c in cases):
             raise ValueError("primary study refuses development_only benchmark cases")
         if not evidence.records():

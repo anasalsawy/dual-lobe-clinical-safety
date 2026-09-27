@@ -87,7 +87,9 @@ class FrozenEvidenceStore:
                 f"EVIDENCE_ID: {r.evidence_id}\n"
                 f"SOURCE: {r.source}\nTITLE: {r.title}\n"
                 f"VERSION_OR_DATE: {r.version_or_date}\n"
-                f"TAGS: {', '.join(r.tags)}\nEXCERPT: {r.excerpt}"
+                f"SOURCE_ORG: {r.source_org}\nSOURCE_TYPE: {r.source_type}\n"
+                f"SOURCE_URL: {r.source_url}\nSOURCE_LOCATOR: {r.source_locator}\n"
+                f"TAGS: {', '.join(r.tags)}\nEVIDENCE_PROPOSITION: {r.excerpt}"
             )
             if used + len(row) > max_chars:
                 break

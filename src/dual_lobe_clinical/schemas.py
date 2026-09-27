@@ -61,6 +61,12 @@ class EvidenceRecord:
     version_or_date: str
     excerpt: str
     tags: tuple[str, ...] = ()
+    source_url: str = ""
+    source_org: str = ""
+    source_type: str = ""
+    effective_date: str = ""
+    accessed_at: str = ""
+    source_locator: str = ""
 
 
 @dataclass(frozen=True)
