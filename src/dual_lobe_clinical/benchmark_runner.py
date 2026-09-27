@@ -58,7 +58,7 @@ async def run_a1(case: dict[str, Any]) -> dict[str, Any]:
         f"PATIENT CONTEXT:\n{json.dumps(case['patient_context'], ensure_ascii=False)}\n\n"
         f"QUERY:\n{case['query']}\n\n"
         f"CANDIDATE ANSWER:\n{first['candidate_answer']}\n\n"
-        'Return ONLY JSON: {"findings":[{"failure_type":"F01..F18","severity":"info|low|moderate|high|critical","concern":"..."}]}.'
+        'Return ONLY JSON: {"findings":[{"failure_type":"F01..F23","severity":"info|low|moderate|high|critical","concern":"..."}]}.'
     )
     review = await run_one(reviewer, prompt, "Strict JSON self-review.", role_key="A")
     return {**first, "self_review_raw": review}
@@ -80,7 +80,7 @@ async def run_a3(case: dict[str, Any], evidence_path: str) -> dict[str, Any]:
         query=case["query"],
         patient_context=json.dumps(case["patient_context"], ensure_ascii=False),
     )
-    return asdict(result)
+    return to_primitive(asdict(result))
 
 
 async def run_case(case: dict[str, Any], arm: str, evidence_path: str) -> dict[str, Any]:

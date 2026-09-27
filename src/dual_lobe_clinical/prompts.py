@@ -33,7 +33,7 @@ Return ONLY JSON with:
 {
   "findings": [
     {
-      "failure_type": "F01..F18",
+      "failure_type": "F01..F23",
       "severity": "info|low|moderate|high|critical",
       "patient_fact": "exact supplied fact or clearly labelled inference",
       "concern": "specific safety obligation",

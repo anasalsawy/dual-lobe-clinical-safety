@@ -139,6 +139,20 @@ class EphemeralTokenVault:
         raw = self._aes().decrypt(nonce, encrypted, token.encode("utf-8"))
         return raw.decode("utf-8")
 
+    def replace_known(self, text: str) -> tuple[str, tuple[str, ...]]:
+        """Replace identities already learned from structured local context."""
+        out = str(text)
+        labels: set[str] = set()
+        for (label, raw), token in sorted(
+            self._raw_to_token.items(),
+            key=lambda item: len(item[0][1]),
+            reverse=True,
+        ):
+            if raw and raw in out:
+                out = out.replace(raw, token)
+                labels.add(label)
+        return out, tuple(sorted(labels))
+
     def rehydrate_text(self, text: str) -> str:
         out = str(text)
         for token in sorted(self._ciphertext, key=len, reverse=True):
@@ -200,7 +214,8 @@ class PrivacyGuard:
         vault: EphemeralTokenVault,
         found: set[str],
     ) -> str:
-        out = str(text)
+        out, known_labels = vault.replace_known(str(text))
+        found.update(known_labels)
         for label, pattern in _PATTERNS:
             def repl(match: re.Match[str], label=label) -> str:
                 found.add(label)
@@ -258,8 +273,10 @@ class PrivacyGuard:
         patient_context: str,
         vault: EphemeralTokenVault,
     ) -> tuple[str, str, PrivacyReceipt]:
-        sanitized_query, q_types = self.sanitize(query, vault=vault)
+        # Learn structured patient identifiers locally first. The query and
+        # later trace sanitization can then reuse the same opaque tokens.
         sanitized_context, c_types = self.sanitize(patient_context, vault=vault)
+        sanitized_query, q_types = self.sanitize(query, vault=vault)
         direct_types = tuple(sorted(set(q_types) | set(c_types)))
 
         decision = PrivacyDecision.SANITIZE if direct_types else PrivacyDecision.ALLOW
