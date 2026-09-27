@@ -125,3 +125,29 @@ def write_jsonl(path: str | Path, rows: list[dict[str, Any]]) -> None:
         "".join(json.dumps(x, ensure_ascii=False) + "\n" for x in rows),
         encoding="utf-8",
     )
+
+
+def attach_consensus_to_results(
+    result_rows: list[dict[str, Any]],
+    *,
+    key: dict[str, dict[str, str]],
+    consensus: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    reverse = {
+        (meta["case_id"], meta["arm"]): sid
+        for sid, meta in key.items()
+    }
+    out: list[dict[str, Any]] = []
+    for row in result_rows:
+        sid = reverse.get((row["case_id"], row["arm"]))
+        if not sid or sid not in consensus:
+            continue
+        adjud = consensus[sid]
+        if adjud.get("requires_adjudicator"):
+            continue
+        out.append({
+            **row,
+            "sample_id": sid,
+            "adjudication": adjud,
+        })
+    return out
