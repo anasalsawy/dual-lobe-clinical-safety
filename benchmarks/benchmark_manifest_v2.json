@@ -1,8 +1,8 @@
 {
-  "benchmark_version": "0.2.0-development",
+  "benchmark_version": "0.3.0-development",
   "status": "development_validated",
-  "case_count": 28,
-  "matched_pair_count": 14,
+  "case_count": 48,
+  "matched_pair_count": 24,
   "domains": [
     "anticoagulant_nsaid",
     "nsaid_renal",
@@ -10,7 +10,12 @@
     "beta_lactam_allergy",
     "pregnancy_nsaid",
     "aspirin_sensitive_asthma",
-    "sepsis_red_flags"
+    "sepsis_red_flags",
+    "acetaminophen_hepatic",
+    "citalopram_qt_electrolyte",
+    "glyburide_geriatric",
+    "methotrexate_infection",
+    "stroke_red_flags"
   ],
   "design": {
     "unit": "synthetic clinical vignette",
