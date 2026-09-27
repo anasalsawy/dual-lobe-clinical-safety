@@ -64,3 +64,35 @@ The project reaches the RESULTS STAGE only when:
 9. CI is green.
 
 The project reaches the PAPER STAGE only after the primary benchmark is run once under the frozen protocol and the results are analyzed without changing the preregistered primary endpoints.
+
+
+## Status snapshot after evidence/benchmark/literature packaging
+
+Legend:
+- **IMPLEMENTED** = code/protocol exists and is testable now.
+- **DEV-COMPLETE** = development artifact exists but is intentionally not primary-frozen.
+- **EXTERNAL-EVIDENCE REQUIRED** = cannot be satisfied by code alone.
+
+| Requirement | Status | Remaining work |
+|---|---|---|
+| R1 Computational framework | IMPLEMENTED | End-to-end primary run evidence |
+| R2 Formal control logic | IMPLEMENTED | Primary-run trace |
+| R3 Evidence retrieval | DEV-COMPLETE | Finish coverage, clinician review, mark corpus primary_frozen |
+| R4 Disagreement policy | IMPLEMENTED | Empirical disagreement cases |
+| R5 Failure taxonomy | IMPLEMENTED | Clinician review of taxonomy coverage |
+| R6 Working implementation | IMPLEMENTED | Deployment smoke test with frozen local guardian |
+| R7 Baseline comparisons | IMPLEMENTED | Run A0/A1/A2/A3 |
+| R8 References / novelty | DEV-COMPLETE | Complete reproducible literature search and final extraction table |
+| R9 Empirical/expert evidence | EXTERNAL-EVIDENCE REQUIRED | Clinician adjudication + benchmark run |
+| R10 Evidence B improves safety | EXTERNAL-EVIDENCE REQUIRED | Comparative results |
+| R11 Omitted contraindication reliability | DEV-COMPLETE benchmark design | Expand/freeze cases + results |
+| R12 False alarms | DEV-COMPLETE matched controls | Results |
+| R13 Automation risk | IMPLEMENTED metrics/gates | Results |
+| R14 Beyond motivating concept | IMPLEMENTED architecture | Results required for manuscript claim |
+| R15 Distinct from prior art | DEV-COMPLETE novelty matrix | Complete literature search + A1/A2/A3 ablation |
+| R16 Claims supported by evidence | IMPLEMENTED pipeline | Generate locked study artifacts/results |
+
+Current development benchmark: 28 cases / 14 matched pairs / 7 authoritative-evidence-backed domains.
+
+No row marked EXTERNAL-EVIDENCE REQUIRED should be represented as solved until the
+human/model study work is actually completed.
