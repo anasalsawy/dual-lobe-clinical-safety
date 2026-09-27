@@ -141,6 +141,8 @@ def build_final_audit_prompt(
     delegated_results: str,
     trace_text: str,
     evidence_text: str,
+    privacy_receipt_json: str = "{}",
+    privacy_trace_identifier_types: str = "none",
 ) -> str:
     """Construct the final B prompt with the exact observable record B must audit."""
     return f"""{CLINICAL_ADVERSARIAL_AUDIT}
@@ -165,6 +167,19 @@ COMPLETE OBSERVABLE A/CHILD EXECUTION + PROVENANCE TRACE:
 
 FROZEN RETRIEVED EVIDENCE:
 {evidence_text}
+
+PRIVACY RECEIPT FROM DETERMINISTIC PROXY:
+{privacy_receipt_json}
+
+IDENTIFIER TYPES DETECTED/REMOVED FROM OBSERVABLE TRACE:
+{privacy_trace_identifier_types}
+
+PRIVACY AUDIT DUTY:
+- Treat unnecessary disclosure, persistence, or routing of patient-identifying data as a material safety failure.
+- Challenge any claim that remote data was deleted, never trained on, or fully erased unless the receipt contains explicit attestation.
+- The encrypted local token vault and its key are outside your access by design.
+- Opaque <PHI:...> tokens are identities you must preserve consistently but must not try to reconstruct.
+- A clinically correct answer can still fail the privacy obligation.
 
 Audit A meticulously. Do not treat agreement between A and B as evidence.
 Every material A clinical claim must appear in claim_audits."""

@@ -5,8 +5,9 @@ import hashlib
 import json
 import os
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
+from typing import Callable
 
 from dual_lobe_crewai.agents import make_b_adversary
 from dual_lobe_crewai.engines import DualLobeEngine
@@ -24,12 +25,18 @@ from .evidence import FrozenEvidenceStore
 from .parsing import assessment_from_json, merge_assessments
 from .prompts import build_final_audit_prompt, build_independent_prompt
 from .schemas import Decision, GateResult, SupervisorAssessment
+from .privacy import (
+    EphemeralClinicalMemory,
+    PrivacyGuard,
+    PrivacyReceipt,
+    ProviderPrivacyPolicy,
+)
 
 
 @dataclass
 class ClinicalRunResult:
-    query: str
-    patient_context: str
+    sanitized_query: str
+    sanitized_patient_context: str
     candidate_answer: str
     released_answer: str | None
     gate: GateResult
@@ -41,6 +48,8 @@ class ClinicalRunResult:
     trace_sha256: str = ""
     timings_ms: dict[str, int | float] = field(default_factory=dict)
     logical_model_calls: int = 0
+    privacy_receipt: PrivacyReceipt | None = None
+    privacy_trace_identifier_types: tuple[str, ...] = ()
 
     @property
     def blocked(self) -> bool:
@@ -67,8 +76,15 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         evidence_path: str | Path | None = None,
         memory=None,
         b_memory=None,
+        privacy_guard: PrivacyGuard | None = None,
+        provider_privacy_policy: ProviderPrivacyPolicy | None = None,
     ):
+        if memory is None:
+            memory = EphemeralClinicalMemory()
+        if b_memory is None:
+            b_memory = EphemeralClinicalMemory()
         super().__init__(memory=memory, b_memory=b_memory)
+        self.privacy_guard = privacy_guard or PrivacyGuard(provider_privacy_policy)
         if evidence_store is not None:
             self.evidence = evidence_store
         else:
@@ -93,12 +109,16 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         query: str,
         patient_context: str,
         evidence_text: str,
+        privacy_receipt_json: str = "{}",
+        privacy_trace_identifier_types: str = "none",
     ) -> SupervisorAssessment:
         b = make_b_adversary(tools=None)
         prompt = build_independent_prompt(
             query=query,
             patient_context=patient_context,
             evidence_text=evidence_text,
+            privacy_receipt_json=privacy_receipt_json,
+            privacy_trace_identifier_types=privacy_trace_identifier_types,
         )
         raw = await self._safe_run_one(
             b,
@@ -119,6 +139,8 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         trace_text: str,
         delegated_results: str,
         evidence_text: str,
+        privacy_receipt_json: str,
+        privacy_trace_identifier_types: str,
     ) -> SupervisorAssessment:
         b_trace = ProxyToolTrace()
         b = make_b_adversary(tools=make_worker_tools(self.b_memory, trace=b_trace))
@@ -157,14 +179,24 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         *,
         query: str,
         patient_context: str,
+        local_delivery: Callable[[str], None] | None = None,
     ) -> ClinicalRunResult:
         total_start = time.perf_counter()
         timings: dict[str, int | float] = {}
 
+        vault = self.privacy_guard.new_vault()
+        sanitized_query, sanitized_context, privacy_receipt = self.privacy_guard.prepare(
+            query=query,
+            patient_context=patient_context,
+            vault=vault,
+        )
+
+        # Raw caller strings are never inserted into model prompts, traces,
+        # persistent memory, or the returned audit artifact by this runtime.
         original_task = (
             "CLINICAL RESEARCH TASK\n"
-            f"PATIENT_CONTEXT:\n{patient_context}\n\n"
-            f"QUERY:\n{query}"
+            f"PATIENT_CONTEXT:\n{sanitized_context}\n\n"
+            f"QUERY:\n{sanitized_query}"
         )
         a_memory = self.memory.auto_slice(original_task)
         strategy_memory = self.memory.split_experience_slice(original_task, limit=3, max_chars=3000)
@@ -172,7 +204,7 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         delegate_state = DelegateRunState()
         live_b_state = LiveBState()
 
-        retrieved = self._retrieve_evidence(query=query, patient_context=patient_context)
+        retrieved = self._retrieve_evidence(query=sanitized_query, patient_context=sanitized_context)
         evidence_text = self.evidence.render(retrieved)
         retrieved_ids = tuple(r.evidence_id for r in retrieved)
 
@@ -188,9 +220,11 @@ class ClinicalDualLobeEngine(DualLobeEngine):
         independent_start = time.perf_counter()
         independent_task = asyncio.create_task(
             self._independent_pass(
-                query=query,
-                patient_context=patient_context,
+                query=sanitized_query,
+                patient_context=sanitized_context,
                 evidence_text=evidence_text,
+                privacy_receipt_json=privacy_receipt_json,
+                privacy_trace_identifier_types=", ".join(privacy_trace_types) or "none",
             )
         )
 
@@ -218,14 +252,35 @@ class ClinicalDualLobeEngine(DualLobeEngine):
 
             # Freeze A's observable run before the final audit. The exact text and
             # hash are preserved so the publication can show what B actually saw.
-            trace_text = trace.render()
+            raw_trace_text = trace.render()
+            trace_text, trace_phi_types = self.privacy_guard.sanitize_trace(
+                raw_trace_text,
+                vault=vault,
+            )
+            delegated_results, delegated_phi_types = self.privacy_guard.sanitize_trace(
+                delegated_results,
+                vault=vault,
+            )
+            privacy_trace_types = tuple(sorted(set(trace_phi_types) | set(delegated_phi_types)))
             trace_events = trace.snapshot_from(0)
             trace_sha256 = hashlib.sha256(trace_text.encode("utf-8")).hexdigest()
+            privacy_receipt = replace(
+                privacy_receipt,
+                direct_identifier_types=tuple(
+                    sorted(set(privacy_receipt.direct_identifier_types) | set(privacy_trace_types))
+                ),
+                token_count=vault.token_count,
+            )
+            privacy_receipt_json = json.dumps(
+                asdict(privacy_receipt),
+                default=lambda x: x.value if hasattr(x, "value") else str(x),
+                sort_keys=True,
+            )
 
             audit_start = time.perf_counter()
             final_assessment = await self._final_clinical_audit(
-                query=query,
-                patient_context=patient_context,
+                query=sanitized_query,
+                patient_context=sanitized_context,
                 a_answer=a_answer,
                 independent=independent,
                 trace_text=trace_text,
@@ -237,6 +292,12 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             merged = merge_assessments(independent, final_assessment)
             gate_result = self.gate.evaluate(merged)
             released = self._release(a_answer, gate_result)
+
+            # Re-identification, when required by a local clinical UI, happens
+            # only here and is delivered through a callback. It is not stored
+            # in the returned run/audit object.
+            if released is not None and local_delivery is not None:
+                local_delivery(vault.rehydrate_text(released))
         finally:
             live_monitor.stop()
             if not live_task.done():
@@ -244,12 +305,14 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             if not independent_task.done():
                 independent_task.cancel()
             delegate_state.close()
+            vault.destroy_key()
 
+        privacy_receipt = self.privacy_guard.finalized_receipt(privacy_receipt, vault)
         timings["total_ms"] = int((time.perf_counter() - total_start) * 1000)
 
         return ClinicalRunResult(
-            query=query,
-            patient_context=patient_context,
+            sanitized_query=sanitized_query,
+            sanitized_patient_context=sanitized_context,
             candidate_answer=a_answer,
             released_answer=released,
             gate=gate_result,
@@ -261,4 +324,6 @@ class ClinicalDualLobeEngine(DualLobeEngine):
             trace_sha256=trace_sha256,
             timings_ms=timings,
             logical_model_calls=3 + delegate_state.child_count + live_monitor.calls,
+            privacy_receipt=privacy_receipt,
+            privacy_trace_identifier_types=privacy_trace_types,
         )
