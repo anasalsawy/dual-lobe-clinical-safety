@@ -98,6 +98,9 @@ async def run_case(case: dict[str, Any], arm: str, evidence_path: str) -> dict[s
         raise ValueError(f"unknown arm: {arm}")
     return {
         "case_id": case["case_id"],
+        "pair_id": case.get("pair_id"),
+        "domain": case.get("domain"),
+        "difficulty": case.get("difficulty"),
         "arm": arm,
         "gold": case["gold"],
         "result": result,
