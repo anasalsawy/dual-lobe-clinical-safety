@@ -44,7 +44,6 @@ async def run_primary_bundle(*, bundle: str | Path, output_dir: str | Path, blin
     raw=output_dir/"raw_results.jsonl"
     args=SimpleNamespace(
         cases=str(bundle/"clinical_cases.primary.jsonl"),
-        evidence="",
         output=str(raw),
         study_mode="primary",
         guardian_manifest=str(bundle/"guardian_manifest.primary.json"),

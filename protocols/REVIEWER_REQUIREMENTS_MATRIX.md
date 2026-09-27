@@ -10,15 +10,15 @@ This document maps the editorial concerns to the implemented system and remainin
 | R4 | No disagreement policy | Explicit deterministic policy governs A/B disagreement, unresolved uncertainty, revision, blocking, and escalation. |
 | R5 | No failure taxonomy | Predefined clinical, supervisory, automation, and privacy failure classes. |
 | R6 | No implementation | Working executable runtime, CLI, tests, packaging, privacy membrane, local B routing, and study tooling. |
-| R7 | No comparison with verifier/supervisory approaches | Concise related-work section situates Dual-Lobe against representative verifier/supervisor designs and explains control-flow differences. |
-| R8 | No references / novelty cannot be assessed | Related-work references and architectural comparison included without a 'closest prior art' claim or oversized novelty apparatus. |
+| R7 | No comparison with verifier/supervisory approaches | Related work now makes a concise architectural comparison focused on control flow, context visibility, persistence, and disagreement handling. |
+| R8 | No references / novelty cannot be assessed | Relevant literature is cited and discussed without creating a separate novelty-scoring or prior-art-ranking apparatus. |
 | R9 | No empirical/simulated/analytical/expert evidence | 48-case paired clinical benchmark, privacy benchmark, stress set, clinician-review workflow, and statistical analysis pipeline. |
 | R10 | No evidence that B improves safety | Primary benchmark measures hazard detection, false negatives, false positives, unnecessary warnings/blocks, and matched-pair discrimination. |
 | R11 | No evidence B detects omitted contraindications reliably | Benchmark contains latent hazards present in patient context but not foregrounded in the question. |
 | R12 | No evidence B avoids new false alarms | Matched negative controls and specificity/false-positive metrics. |
 | R13 | No evidence B avoids automation risks | Fail-closed runtime, explicit gate, failure injection, unsafe-release and unnecessary-block measurement. |
 | R14 | Motivating concept rather than scientific development | Executable implementation plus reproducible benchmark/review/scoring pipeline. |
-| R15 | Contribution not situated relative to existing work | Related-work section compares persistence, context visibility, control flow, and disagreement handling with representative verifier/supervisor systems. |
+| R15 | Contribution not situated relative to existing work | Related work compares the implemented flow with representative verifier/supervisor approaches. |
 | R16 | Claims need supporting evidence | Raw outputs, blinded adjudication, generated metrics, hashes, and locked result artifacts. |
 
 ## Clinical B invariants

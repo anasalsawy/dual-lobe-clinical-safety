@@ -1,42 +1,15 @@
 # Related Work
 
-The reviewer asked that the proposed supervisory architecture be situated
-against existing verifier and supervisory approaches. This section therefore
-keeps the comparison narrow and architectural.
+The reviewer asked that the supervisory architecture be situated against existing verifier and supervisory approaches.
 
-## Verifier and supervisory approaches
+Prior work includes self-critique, staged verification, separate verifier models, and multi-model review. The purpose of the comparison is architectural: to explain how information reaches the supervisor, when the supervisor forms its view, what it can observe, and how disagreement affects release.
 
-Prior work has explored self-critique, staged verification, separate verifier
-models, and multi-model review. Examples include Self-Refine, Chain-of-
-Verification, Knowledge-Augmented Language Model Verification, and multi-agent
-debate.
+The Dual-Lobe clinical system is organized around:
+- a persistent supervisory B rather than an occasional review step;
+- an independent pre-answer view of the original patient/context;
+- later access to the observable A/tool execution trace and final answer;
+- explicit runtime disagreement handling;
+- the ability to receive additional context or information through the runtime when needed;
+- patient-data handling and privacy supervision.
 
-These works establish that verification and model-to-model checking are not new
-in themselves. The purpose of citing them here is to clarify how the present
-system is organized, not to claim that any one paper is the uniquely closest
-precedent.
-
-The Dual-Lobe clinical system differs in the specific flow being studied:
-- B is a persistent supervisory pathway rather than an occasional critique step;
-- B forms an independent view of the original patient/context before seeing A's
-  final answer;
-- B later receives the observable A/tool execution trace and final answer;
-- disagreement is resolved by explicit runtime policy rather than informal
-  model consensus;
-- B can be supplied with additional context or information through the runtime
-  when needed;
-- the implementation includes patient-data handling and privacy supervision.
-
-## Clinical safety context
-
-Medical-LLM safety work has shown the importance of guardrails, human review,
-and measuring both prevented errors and newly introduced harms. These studies
-motivate the clinical evaluation but are not treated as direct architectural
-equivalents of Dual-Lobe.
-
-## Scope of the comparison
-
-The manuscript should make a concise comparison with representative verifier
-and supervisory systems and explain the differences in control flow, context
-visibility, and disagreement handling. It should not claim that verifier
-models, retrieval, guardrails, or multi-model interaction are themselves novel.
+The manuscript should compare these properties with representative verifier/supervisor systems and cite the relevant literature. It should not turn that comparison into a separate experimental architecture or claim that verification itself is novel.

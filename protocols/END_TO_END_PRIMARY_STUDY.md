@@ -1,7 +1,6 @@
 # End-to-End Primary Study Runbook
 
-This runbook evaluates the implemented Dual-Lobe clinical system on the frozen
-benchmark. It no longer defines A0/A1/A2/A3 comparison arms.
+This runbook evaluates the implemented Dual-Lobe clinical system on the frozen benchmark.
 
 ## Stage 1 — frozen execution
 
@@ -12,13 +11,11 @@ python -m dual_lobe_clinical.study_runner \
   --blinding-salt <secret-random-study-salt>
 ```
 
-The command verifies frozen inputs, runs the Dual-Lobe system on each case,
-writes immutable raw results, and generates a blinded clinician review packet.
+The command verifies frozen inputs, runs the Dual-Lobe system on each case, writes immutable raw results, and generates a blinded clinician review packet.
 
 ## Stage 2 — blinded adjudication
 
-At least two clinician reviewers independently score every sample. Ties or
-disagreements require adjudication.
+At least two clinician reviewers independently score every sample. Ties or disagreements require adjudication.
 
 ## Stage 3 — locked scoring
 
@@ -28,10 +25,8 @@ python -m dual_lobe_clinical.primary_score \
   --adjudications results/primary_v1/adjudications.jsonl
 ```
 
-Scoring refuses to proceed if raw results changed or any sample lacks locked
-consensus.
+Scoring refuses to proceed if raw results changed or any sample lacks locked consensus.
 
 ## Integrity rule
 
-No model output, benchmark case, adjudication, or primary result may be manually
-replaced after hashes are locked. Any correction requires a new study version.
+No model output, benchmark case, adjudication, or primary result may be manually replaced after hashes are locked. Any correction requires a new study version.
