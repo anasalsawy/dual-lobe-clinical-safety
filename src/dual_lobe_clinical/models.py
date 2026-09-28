@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import threading
+from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -59,7 +60,7 @@ class Plan(BaseModel):
 
 class ExecutionStepResult(BaseModel):
     id: str
-    status: str
+    status: Literal["completed", "failed", "not_run"]
     result: str = ""
     evidence: str = ""
 
@@ -76,7 +77,10 @@ class ExecutionReport(BaseModel):
 
     def assert_matches_contract(self, contract: "PlanContract") -> None:
         current_ids = {step.id for step in contract.current.steps}
-        reported = {step.id for step in self.steps}
+        reported_ids = [step.id for step in self.steps]
+        if len(reported_ids) != len(set(reported_ids)):
+            raise RuntimeError("B execution report contains duplicate plan step ids")
+        reported = set(reported_ids)
         unknown = reported - current_ids
         if unknown:
             raise RuntimeError(f"B reported steps outside the current plan: {sorted(unknown)}")
@@ -85,6 +89,9 @@ class ExecutionReport(BaseModel):
                 f"B execution report used plan revision {self.plan_revision}, "
                 f"but current plan revision is {contract.revision}"
             )
+        missing = current_ids - reported
+        if missing:
+            raise RuntimeError(f"B execution report is missing plan steps: {sorted(missing)}")
 
 
 class PlanContract:
