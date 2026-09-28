@@ -43,6 +43,7 @@ async def run_one(agent, description: str, expected_output: str, *, role_key: st
     for round_no in range(1, max_rounds + 1):
         candidates = specs if (round_no == 1 or failover) else specs[:1]
         for idx, original_spec in enumerate(candidates):
+            await RATE_CONTROLLER.ensure_discovered(original_spec)
             input_est = RATE_CONTROLLER.estimate_input_tokens(description + "\n" + expected_output)
             spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
             estimated_total = input_est + spec.max_tokens
