@@ -49,20 +49,22 @@ flowchart LR
 
 | | |
 |---|---|
-| [paper/MANUSCRIPT.md](paper/MANUSCRIPT.md) | Revised manuscript (model-study results pending) |
-| [paper/RESPONSE_LETTER.md](paper/RESPONSE_LETTER.md) | Point-by-point response to the reviewer |
+| [paper/jbhi/manuscript.tex](paper/jbhi/manuscript.tex) | New JBHI manuscript, IEEEtran (compile on Overleaf; model-study results pending) |
+| [paper/jbhi/COVER_LETTER.md](paper/jbhi/COVER_LETTER.md) | Cover letter for the new submission |
+| [docs/REPORTING_CHECKLIST.md](docs/REPORTING_CHECKLIST.md) | DECIDE-AI and TRIPOD-LLM alignment |
+| [benchmarks/clinical/DATASHEET.md](benchmarks/clinical/DATASHEET.md) | Benchmark datasheet: composition, provenance, limitations |
 | [docs/REVIEWER_RESPONSE.md](docs/REVIEWER_RESPONSE.md) | Every reviewer requirement quoted, where it is met, and its status |
 | [docs/METHODS.md](docs/METHODS.md) | Formal control logic, disagreement policy, evidence retrieval, failure taxonomy |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | Privacy design, guarantees and limitations |
-| [docs/RELATED_WORK.md](docs/RELATED_WORK.md) | Comparison with verifier, guardrail, debate, AI-control and CDS approaches; 42 references |
+| [docs/RELATED_WORK.md](docs/RELATED_WORK.md) | Comparison with verifier, guardrail, debate, AI-control and CDS approaches; 45 references |
 | [docs/EVALUATION.md](docs/EVALUATION.md) | Hypotheses, study design, evidence so far, how to run |
 
 ## Evidence so far
 
 * **Release gate:** safety invariants verified over all 50,568 enumerated
   input configurations (`tests/test_gate_exhaustive.py`).
-* **Privacy audit** (29 cases, 115 planted identifiers): 0 deterministic
-  leaks, 1 left for the local sweep by design, 97/97 clinical values
+* **Privacy audit** (42 cases, 171 planted identifiers): 0 deterministic
+  leaks, 2 left for the local sweep by design, 125/125 clinical values
   preserved, all sessions crypto-shredded (`results/privacy_audit.json`).
 * **End-to-end tests at the provider boundary:** no identifier reaches the
   remote lobe; all B calls stay local; a remote B is refused.
@@ -83,7 +85,7 @@ cp .env.example .env
 dual-lobe-clinical --question "What ibuprofen dose for his knee OA?" \
                    --record patient.json --show-meta
 
-pytest -q                                   # 92 tests
+pytest -q                                   # 93 tests
 python evaluation/privacy_audit.py          # deterministic privacy audit
 python evaluation/run_study.py --repeats 3  # model study (needs models)
 python evaluation/score.py results/study_<stamp>.jsonl --export-adjudication results/adjudication
@@ -104,7 +106,7 @@ src/dual_lobe_clinical/  clinical layer
   control.py             grounding + release gate (deterministic)
   knowledge.py           evidence retrieval
   prompts.py, models.py
-benchmarks/clinical/     29-case omission benchmark with planted identifiers
+benchmarks/clinical/     42-case omission benchmark (incl. 13 matched twins), datasheet
 evaluation/              privacy audit, study runner, scorer
 docs/                    methods, privacy, related work, evaluation, reviewer response
 ```

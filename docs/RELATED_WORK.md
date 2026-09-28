@@ -77,6 +77,13 @@ These are claims to be tested, not assumed:
    curated rule base for well-encoded drug interactions. The two are
    complementary: rule outputs can be fed in as `[K#]` knowledge.
 
+## Reporting and data documentation
+
+The evaluation is reported following DECIDE-AI [43] for early-stage
+evaluation of AI decision support and TRIPOD-LLM [44] for LLM studies
+(`docs/REPORTING_CHECKLIST.md`). The benchmark is documented with a
+datasheet [45] (`benchmarks/clinical/DATASHEET.md`).
+
 ## Where the evidence stands
 
 LLMs show strong clinical knowledge on examination-style benchmarks
@@ -129,6 +136,9 @@ measure.
 40. Graber ML, Franklin N, Gordon R. Diagnostic error in internal medicine. Arch Intern Med 2005;165(13):1493–1499.
 41. Tversky A, Kahneman D. Judgment under uncertainty: heuristics and biases. Science 1974;185(4157):1124–1131.
 42. Sharma M, et al. Towards Understanding Sycophancy in Language Models. ICLR 2024.
+43. Vasey B, et al. Reporting guideline for the early-stage clinical evaluation of decision support systems driven by artificial intelligence: DECIDE-AI. Nature Medicine 2022;28:924–933.
+44. Gallifant J, et al. The TRIPOD-LLM reporting guideline for studies using large language models. Nature Medicine 2025;31:60–69.
+45. Gebru T, et al. Datasheets for Datasets. Communications of the ACM 2021;64(12):86–92.
 
 > Before submission, verify every reference against the publisher's record
 > and format it to the target venue's style.

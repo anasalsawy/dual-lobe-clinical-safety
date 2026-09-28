@@ -9,8 +9,22 @@ and its status.
 * **Ready to run**: the complete apparatus exists and is tested, but it needs
   the author's models or clinicians. No results are claimed for these.
 
-The revised manuscript is [`paper/MANUSCRIPT.md`](../paper/MANUSCRIPT.md). The
-formal reply is [`paper/RESPONSE_LETTER.md`](../paper/RESPONSE_LETTER.md).
+The decision was a **desk rejection** at JBHI (JBHI-06009-2026). The new
+manuscript is [`paper/jbhi/manuscript.tex`](../paper/jbhi/manuscript.tex)
+(IEEEtran), with a cover letter for a new submission in
+[`paper/jbhi/COVER_LETTER.md`](../paper/jbhi/COVER_LETTER.md).
+
+## 0. Editorial screening criteria marked (X)
+
+| Criterion | What was missing | What the new submission provides | Status |
+|---|---|---|---|
+| **Contribution**: biomedical/health relevance and informatics contribution | A concept note with no defined problem or contribution | Precisely defined clinical problem (omission; the "open-sesame" problem); four testable contributions (manuscript §I); identity-blind inference for clinical data protection | **Done** |
+| **Methods rigor** | No specification, design or reporting standard | Formal control logic with exhaustive verification; pre-specified paired design; DECIDE-AI and TRIPOD-LLM alignment (`docs/REPORTING_CHECKLIST.md`) | **Done** |
+| **Evaluation & evidence**: statistical support | None | Wilson intervals, exact McNemar, Cohen's κ, repeat consistency, matched-pair discrimination | Methods **done**; numbers **ready to run** |
+| … data sufficiency | None | 42 cases incl. 13 matched hazard/no-hazard twins, ≥3 repeats; explicit sample-size limits and a confirmatory-scale plan | Partly done: expand the benchmark for a confirmatory claim |
+| … data provenance | None | Datasheet; clinical basis per label; synthetic identifiers; per-row SHA-256, code commit and model IDs | **Done** (clinician validation pending) |
+| **Completeness/clarity** | 2 pages, no references, no methods or results | Full IEEE manuscript: abstract (227 words), index terms, related work with 45 references cited in order, methods, analytical properties, evaluation, results, limitations | **Done** (results pending) |
+| Scope/fit | Not marked | Clinical decision support and health informatics; privacy | n/a |
 
 ## A. Strengths the reviewer identified (kept and strengthened)
 
@@ -29,14 +43,14 @@ formal reply is [`paper/RESPONSE_LETTER.md`](../paper/RESPONSE_LETTER.md).
 | B2 | "[no] evidence retrieval mechanism" | METHODS §5; manuscript §5 | Numbered record facts with stable paths; verbatim-quote verification; deterministic pre-call knowledge retrieval; only retrieved `[K#]` citable (`knowledge.py`, `control.ground_finding`, tests) | **Done** |
 | B3 | "[no] disagreement policy" | METHODS §4; manuscript §4 | Six-point policy: no override by either lobe; evidence-gated interruption; findings shown first with their source; visible failure; independence before comparison; optional early resolution. Enforced by the gate and tested (B never alters A's answer; ungrounded objections cannot interrupt) | **Done** |
 | B4 | "[no] failure taxonomy" | METHODS §6; manuscript §7 | 4 primary-lobe failure kinds × 3 severities, used as the machine-checked output schema (`models.py`); 12 system failure modes, each with its control and code location | **Done** |
-| B5 | "[no] implementation" | `src/dual_lobe_clinical/` on `src/dual_lobe_crewai/`; CLI `dual-lobe-clinical` | 92 automated tests in CI; the provider boundary is exercised end to end | **Done** |
+| B5 | "[no] implementation" | `src/dual_lobe_clinical/` on `src/dual_lobe_crewai/`; CLI `dual-lobe-clinical` | 93 automated tests in CI; the provider boundary is exercised end to end | **Done** |
 | B6 | "[no] comparison with existing verifier and supervisory approaches" | RELATED_WORK comparison table (9 approach families); manuscript Table 1 | Also an executable comparison: `answer_verifier` arm with the same model, record and schema | **Done** |
 
 ## C. "The lack of any references also prevents assessment of whether the proposed architecture contributes something distinct"
 
 | # | Reviewer | Where met | Status |
 |---|---|---|---|
-| C1 | references | 42 references in the manuscript and RELATED_WORK, all cited in the text: verification, guardrails, multi-agent, AI control, clinical LLMs, CDS / alert fatigue / automation bias, de-identification, cryptography, statistics | **Done** (check formatting against the venue) |
+| C1 | references | 45 references in the manuscript and RELATED_WORK, all cited in the text: verification, guardrails, multi-agent, AI control, clinical LLMs, CDS / alert fatigue / automation bias, de-identification, cryptography, statistics | **Done** (check formatting against the venue) |
 | C2 | "contributes something distinct" | Four explicit distinctness claims (RELATED_WORK "What is claimed to be distinct"; manuscript §1), each tied to a test or measurement | **Done** (claims); ready to run (empirical support for claim 1) |
 
 ## D. "no empirical, simulated, analytical, or expert evidence showing …"
@@ -47,7 +61,7 @@ formal reply is [`paper/RESPONSE_LETTER.md`](../paper/RESPONSE_LETTER.md).
 | | | Empirical | Paired 3-arm study (`run_study.py`), McNemar and Wilson statistics (`score.py`) | **Ready to run** |
 | D2 | "… detects omitted contraindications reliably" | Empirical | 21 omission cases in 12 clinical domains with gold fact paths; sensitivity per arm and per case; **repeat consistency** across runs (reliability) | **Ready to run** |
 | D3 | "… or avoids creating new false alarms" | Analytical | Every hold requires a grounded finding, so ungrounded output adds zero holds (I5), and every false hold points to a real, quoted record entry (METHODS §7) | **Done** |
-| | | Empirical | 8 negative controls with distractors; false-hold rate per arm | **Ready to run** |
+| | | Empirical | 21 negative controls: 8 with distractors and 13 matched twins of hazard cases; false-hold rate and matched-pair discrimination per arm | **Ready to run** |
 | D4 | "… and automation risks" | Design + tests | B never edits A (tested); source entry shown for every interruption; holds and UNVERIFIED need acknowledgement; a failed check can never pass (I2, proven); narrow GREEN; anti-sycophancy | **Done** (clinician-behaviour user study: future work, stated) |
 | D5 | "expert evidence" | Expert | Blinded adjudication sheet with a separate key (`score.py --export-adjudication`); **κ, consensus, tie-break and adjudicated per-arm rates** (`adjudication.py`); gold-label validation step | **Ready to run** (needs clinicians) |
 | D6 | "simulated evidence" | Integration | Scripted models at the provider boundary exercise every path (hold, advisory, fail-closed, blocked, fabricated evidence, remote B refused) | **Done** |
@@ -56,7 +70,7 @@ formal reply is [`paper/RESPONSE_LETTER.md`](../paper/RESPONSE_LETTER.md).
 
 | # | Where met | Status |
 |---|---|---|
-| E1 | Revised manuscript `paper/MANUSCRIPT.md`: formal specification, related work, privacy, taxonomy, analytical properties, evaluation design, results so far, limitations, and a pending-results table to fill | **Done** (model results pending) |
+| E1 | New manuscript `paper/jbhi/manuscript.tex`: formal specification, related work, privacy, taxonomy, analytical properties, evaluation design, results so far, limitations, and a pending-results table to fill | **Done** (model results pending) |
 
 ## F. Beyond what was asked
 
@@ -69,7 +83,7 @@ formal reply is [`paper/RESPONSE_LETTER.md`](../paper/RESPONSE_LETTER.md).
 | F5 | Leak probe in every study run | Privacy measured in the real experiment |
 | F6 | Anchoring-free pre-answer scan run concurrently with A | Independence at no latency cost (METHODS §7) |
 | F7 | Supervisor held to anti-deception: fabricated citations or quotes disqualify its objections | The overseer is itself audited |
-| F8 | Deterministic privacy audit: 115 identifiers, 0 deterministic leaks, 97/97 clinical values preserved | Empirical privacy evidence already produced |
+| F8 | Deterministic privacy audit: 171 identifiers, 0 deterministic leaks, 125/125 clinical values preserved | Empirical privacy evidence already produced |
 
 ## G. What only the author can complete
 
@@ -79,7 +93,7 @@ formal reply is [`paper/RESPONSE_LETTER.md`](../paper/RESPONSE_LETTER.md).
 2. Have one or two clinicians validate the gold labels, then independently
    fill the blinded sheet and run `python evaluation/adjudication.py …`.
    This completes D5.
-3. Paste the numbers into manuscript Table 4 and the abstract, as measured,
+3. Fill every `\pending{}` in `paper/jbhi/manuscript.tex` (results table, abstract, affiliation), as measured,
    including unfavourable ones.
 4. Optionally, measure de-identification recall on the i2b2/UTHealth 2014
    corpus (requires a data-use agreement).

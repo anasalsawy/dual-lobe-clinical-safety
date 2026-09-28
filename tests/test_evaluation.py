@@ -20,11 +20,17 @@ SUITE = json.loads(CASES.read_text())
 
 def test_benchmark_is_well_formed():
     ids = [c["id"] for c in SUITE["cases"]]
-    assert len(ids) == len(set(ids)) == 29
+    assert len(ids) == len(set(ids)) == 42
     types = {c["type"] for c in SUITE["cases"]}
     assert types == {"unasked_hazard", "missing_information", "negative_control"}
+    by_id = {c["id"]: c for c in SUITE["cases"]}
     for c in SUITE["cases"]:
         assert c["phi"], c["id"]
+        assert c["gold"].get("basis"), c["id"]  # provenance for every label
+        if c.get("twin_of"):
+            base = by_id[c["twin_of"]]
+            assert base["type"] == "unasked_hazard" and c["type"] == "negative_control"
+            assert c["question"] == base["question"]  # only the record differs
         if c["type"] != "negative_control":
             assert c["gold"]["terms"] and c["gold"]["fact_paths"], c["id"]
 
@@ -82,6 +88,8 @@ async def test_harness_runs_end_to_end_with_scripted_models(monkeypatch, tmp_pat
     assert len(rows) == 6 and not any("error" in r for r in rows)
     assert all(r["privacy"]["planted_identifier_leaks"] == [] for r in rows)
     assert all(r["privacy"]["remote_payloads"] >= 1 for r in rows)
+    assert len({r["provenance"]["cases_sha256"] for r in rows}) == 1
+    assert rows[0]["provenance"]["a_model"].startswith("openrouter/")
     report = score.score(rows, {c["id"]: c for c in SUITE["cases"]})
     assert set(report["arms"]) == {"a_only", "answer_verifier", "dual_lobe"}
     assert report["arms"]["dual_lobe"]["false_holds"] == 0
@@ -124,3 +132,16 @@ def test_adjudication_kappa_consensus_and_tiebreak(tmp_path):
     assert out["adjudicated"]["dual_lobe"]["surfaced"]["k"] == 1
     assert out["adjudicated"]["a_only"]["surfaced"]["k"] == 0
     assert out["adjudicated"]["dual_lobe"]["false_alarm"]["k"] == 1
+
+
+def test_matched_pair_discrimination():
+    cases = {c["id"]: c for c in SUITE["cases"]}
+    def row(cid, release):
+        return {"case_id": cid, "case_type": cases[cid]["type"], "arm": "dual_lobe", "repeat": 0, "release": release,
+                "answer_deidentified": "", "findings": [], "fact_paths": {}, "privacy": {"planted_identifier_leaks": []},
+                "logical_model_calls": 3, "timings_ms": {"total_ms": 1}}
+    rows = [row("H01", "HOLD_FOR_CLINICIAN"), row("T01", "RELEASE"),
+            row("H03", "HOLD_FOR_CLINICIAN"), row("T03", "HOLD_FOR_CLINICIAN")]
+    mp = score.score(rows, cases)["arms"]["dual_lobe"]["matched_pairs"]
+    assert mp["n"] == 2 and mp["hold_hazard_only"] == 1 and mp["hold_both"] == 1
+    assert mp["discrimination"] == 0.5

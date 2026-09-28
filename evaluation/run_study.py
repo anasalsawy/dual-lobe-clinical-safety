@@ -54,8 +54,29 @@ class LeakProbe:
         return text
 
 
+def provenance(cases_path: str) -> dict:
+    """Frozen identity of the benchmark, code and models used in a run."""
+    import hashlib
+    import os
+    import subprocess
+
+    try:
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        dirty = bool(subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout.strip())
+    except Exception:
+        commit, dirty = "unknown", None
+    return {
+        "cases_sha256": hashlib.sha256(Path(cases_path).read_bytes()).hexdigest(),
+        "code_commit": commit,
+        "code_dirty": dirty,
+        "a_model": os.getenv("DUAL_LOBE_A_MODEL", ""),
+        "b_model": os.getenv("DUAL_LOBE_B_VERIFY_MODEL") or os.getenv("DUAL_LOBE_B_MODEL", ""),
+    }
+
+
 async def run(args) -> Path:
     suite = json.loads(Path(args.cases).read_text(encoding="utf-8"))
+    prov = provenance(args.cases)
     index_date = date.fromisoformat(suite["index_date"])
     cases = [c for c in suite["cases"] if not args.only or c["id"] in args.only]
     out = Path(args.out_dir) / f"study_{time.strftime('%Y%m%d_%H%M%S')}.jsonl"
@@ -102,6 +123,7 @@ async def run(args) -> Path:
                             row = {"case_id": case["id"], "case_type": case["type"], "arm": arm, "repeat": repeat,
                                    "error": f"{type(exc).__name__}: {exc}",
                                    "elapsed_ms": int((time.perf_counter() - t0) * 1000)}
+                        row["provenance"] = prov
                         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                         fh.flush()
                         print(f"{case['id']} {arm} r{repeat}: {row.get('release', row.get('error'))}")
