@@ -1,4 +1,4 @@
-# Datasheet: Dual-Lobe Omission Benchmark v1.1
+# Datasheet: Dual-Lobe Omission Benchmark v2.0
 
 Structured after *Datasheets for Datasets* (Gebru et al., Commun. ACM 2021).
 
@@ -15,22 +15,23 @@ Structured after *Datasheets for Datasets* (Gebru et al., Commun. ACM 2021).
 
 | Type | n | Definition |
 |---|---|---|
-| `unasked_hazard` | 19 | The record contains a fact that makes the requested action unsafe or requires action; the question does not mention it |
-| `missing_information` | 2 | A safe answer requires data that is absent from the record |
-| `negative_control` | 21 | No patient-specific hazard: 8 independent controls (several with deliberate distractors) and 13 **matched twins** |
-| **Total** | **42** | |
+| `unasked_hazard` | 79 | The record contains a fact that makes the requested action unsafe or requires action; the question does not mention it |
+| `missing_information` | 6 | A safe answer requires data that is absent from the record |
+| `negative_control` | 48 | No patient-specific hazard: 8 independent controls (several with deliberate distractors) and 40 **matched twins** |
+| **Total** | **133** | |
 
 * **Matched twins** (`twin_of`) repeat a hazard case's question exactly and
   remove only the hazard fact (for example, eGFR 28 on an ACE inhibitor and
-  a diuretic becomes eGFR 95 with no interacting drugs). Twins exist for 13
-  of the 19 hazards. For the other 6, removing the hazard still leaves a
+  a diuretic becomes eGFR 95 with no interacting drugs). Twins exist for 40
+  of the 79 hazards. For the others, removing the hazard still leaves a
   genuine concern, so no clean control is possible. Examples: diphenhydramine
   remains inappropriate for any 84-year-old; a fluoroquinolone in a
   79-year-old keeps its tendon warning without steroids.
-* **Clinical domains.** Drug–drug interaction; drug–disease; allergy;
-  pregnancy and childbearing potential; renal dosing; paediatric; older
-  adult; implanted device; boxed warning; red-flag diagnosis; unaddressed
-  critical result; missing dosing data.
+* **Clinical domains (17).** Drug–drug interaction; drug–disease; allergy
+  and hypersensitivity; pregnancy; childbearing potential; lactation; renal
+  dosing; hepatic impairment; pharmacogenomics; QT prolongation;
+  paediatric; older adult; implanted device; boxed warning; red-flag
+  diagnosis; unaddressed critical result; missing dosing or baseline data.
 * **Fields.** `id`, `type`, `domain`, `question`, `record` (free-form JSON:
   structured fields and/or free-text notes), `gold.fact_paths` (record paths
   that establish the hazard), `gold.terms` (screening terms), `gold.summary`,
@@ -52,7 +53,11 @@ Structured after *Datasheets for Datasets* (Gebru et al., Commun. ACM 2021).
   (for example, the simvastatin prescribing information contraindicating
   strong CYP3A4 inhibitors). Cases were chosen for clinical consensus, not
   for difficulty or novelty.
-* **Validation status.** Author-drafted. **Independent clinician validation
+* **Version history.** v1.0: 29 cases. v1.1: 13 matched twins and label
+  basis added (42 cases). v2.0: 64 index cases and 27 twins added (133
+  cases).
+* **Validation status.** Author-drafted. `evaluation/export_label_validation.py`
+  produces the validation sheet (`results/label_validation.csv`). **Independent clinician validation
   is required before any result is reported** (docs/EVALUATION.md). Record
   the validators' specialties, whether each label was confirmed or
   corrected, and the date.
@@ -72,8 +77,8 @@ Structured after *Datasheets for Datasets* (Gebru et al., Commun. ACM 2021).
 
 * The cases are short and clean compared with real records. Performance on
   real, noisy, long records is expected to be lower.
-* 21 hazard cases can detect only large differences between arms; see the
-  sample-size note in docs/EVALUATION.md.
+* 85 hazard cases support detecting moderate differences between arms;
+  see the sample-size note in docs/EVALUATION.md.
 * The same author wrote the benchmark and the system. Mitigations are
   clinician validation, clinician-contributed additional cases, and a
   frozen hash before the run.

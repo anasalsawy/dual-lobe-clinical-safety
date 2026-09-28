@@ -20,7 +20,7 @@ SUITE = json.loads(CASES.read_text())
 
 def test_benchmark_is_well_formed():
     ids = [c["id"] for c in SUITE["cases"]]
-    assert len(ids) == len(set(ids)) == 42
+    assert len(ids) == len(set(ids)) == 133
     types = {c["type"] for c in SUITE["cases"]}
     assert types == {"unasked_hazard", "missing_information", "negative_control"}
     by_id = {c["id"]: c for c in SUITE["cases"]}
@@ -145,3 +145,23 @@ def test_matched_pair_discrimination():
     mp = score.score(rows, cases)["arms"]["dual_lobe"]["matched_pairs"]
     assert mp["n"] == 2 and mp["hold_hazard_only"] == 1 and mp["hold_both"] == 1
     assert mp["discrimination"] == 0.5
+
+
+def test_label_validation_export_and_summary(tmp_path):
+    import csv as _csv
+    import export_label_validation as elv
+
+    out = tmp_path / "v.csv"
+    assert elv.export(str(CASES), str(out)) == 133
+    text = out.read_text()
+    assert "Hargrove" not in text  # validators see the de-identified record
+    rows = list(_csv.DictReader(out.open()))
+    a, b = tmp_path / "a.csv", tmp_path / "b.csv"
+    for path, mark in ((a, "CONFIRM"), (b, "CORRECT")):
+        with path.open("w", newline="") as fh:
+            w = _csv.DictWriter(fh, fieldnames=rows[0].keys())
+            w.writeheader()
+            for r in rows[:3]:
+                w.writerow({**r, "CONFIRM_or_CORRECT": "CONFIRM" if r["case_id"] != "H02" else mark})
+    s = elv.summarize([str(a), str(b)])
+    assert s["confirmed_by_all"] == 2 and s["disputed"][0]["case_id"] == "H02"

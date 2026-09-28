@@ -21,7 +21,7 @@ manuscript is [`paper/jbhi/manuscript.tex`](../paper/jbhi/manuscript.tex)
 | **Contribution**: biomedical/health relevance and informatics contribution | A concept note with no defined problem or contribution | Precisely defined clinical problem (omission; the "open-sesame" problem); four testable contributions (manuscript §I); identity-blind inference for clinical data protection | **Done** |
 | **Methods rigor** | No specification, design or reporting standard | Formal control logic with exhaustive verification; pre-specified paired design; DECIDE-AI and TRIPOD-LLM alignment (`docs/REPORTING_CHECKLIST.md`) | **Done** |
 | **Evaluation & evidence**: statistical support | None | Wilson intervals, exact McNemar, Cohen's κ, repeat consistency, matched-pair discrimination | Methods **done**; numbers **ready to run** |
-| … data sufficiency | None | 42 cases incl. 13 matched hazard/no-hazard twins, ≥3 repeats; explicit sample-size limits and a confirmatory-scale plan | Partly done: expand the benchmark for a confirmatory claim |
+| … data sufficiency | None | 133 cases: 85 hazard/missing-information across 17 clinical domains, 48 controls incl. 40 matched hazard/no-hazard twins; ≥3 repeats; explicit sample-size statement | **Done** (label validation by clinicians pending) |
 | … data provenance | None | Datasheet; clinical basis per label; synthetic identifiers; per-row SHA-256, code commit and model IDs | **Done** (clinician validation pending) |
 | **Completeness/clarity** | 2 pages, no references, no methods or results | Full IEEE manuscript: abstract (227 words), index terms, related work with 45 references cited in order, methods, analytical properties, evaluation, results, limitations | **Done** (results pending) |
 | Scope/fit | Not marked | Clinical decision support and health informatics; privacy | n/a |
@@ -43,7 +43,7 @@ manuscript is [`paper/jbhi/manuscript.tex`](../paper/jbhi/manuscript.tex)
 | B2 | "[no] evidence retrieval mechanism" | METHODS §5; manuscript §5 | Numbered record facts with stable paths; verbatim-quote verification; deterministic pre-call knowledge retrieval; only retrieved `[K#]` citable (`knowledge.py`, `control.ground_finding`, tests) | **Done** |
 | B3 | "[no] disagreement policy" | METHODS §4; manuscript §4 | Six-point policy: no override by either lobe; evidence-gated interruption; findings shown first with their source; visible failure; independence before comparison; optional early resolution. Enforced by the gate and tested (B never alters A's answer; ungrounded objections cannot interrupt) | **Done** |
 | B4 | "[no] failure taxonomy" | METHODS §6; manuscript §7 | 4 primary-lobe failure kinds × 3 severities, used as the machine-checked output schema (`models.py`); 12 system failure modes, each with its control and code location | **Done** |
-| B5 | "[no] implementation" | `src/dual_lobe_clinical/` on `src/dual_lobe_crewai/`; CLI `dual-lobe-clinical` | 93 automated tests in CI; the provider boundary is exercised end to end | **Done** |
+| B5 | "[no] implementation" | `src/dual_lobe_clinical/` on `src/dual_lobe_crewai/`; CLI `dual-lobe-clinical` | 94 automated tests in CI; the provider boundary is exercised end to end | **Done** |
 | B6 | "[no] comparison with existing verifier and supervisory approaches" | RELATED_WORK comparison table (9 approach families); manuscript Table 1 | Also an executable comparison: `answer_verifier` arm with the same model, record and schema | **Done** |
 
 ## C. "The lack of any references also prevents assessment of whether the proposed architecture contributes something distinct"
@@ -59,9 +59,9 @@ manuscript is [`paper/jbhi/manuscript.tex`](../paper/jbhi/manuscript.tex)
 |---|---|---|---|---|
 | D1 | "… that the supervisory lobe improves safety" | Analytical | METHODS §7 detection decomposition P(surfaced) = P(¬M) + P(M)·P(D\|M); gate invariants I1–I7 exhaustively verified | **Done** |
 | | | Empirical | Paired 3-arm study (`run_study.py`), McNemar and Wilson statistics (`score.py`) | **Ready to run** |
-| D2 | "… detects omitted contraindications reliably" | Empirical | 21 omission cases in 12 clinical domains with gold fact paths; sensitivity per arm and per case; **repeat consistency** across runs (reliability) | **Ready to run** |
+| D2 | "… detects omitted contraindications reliably" | Empirical | 85 omission cases (79 unasked hazards, 6 missing information) in 17 clinical domains with gold fact paths; sensitivity per arm and per case; **repeat consistency** across runs (reliability) | **Ready to run** |
 | D3 | "… or avoids creating new false alarms" | Analytical | Every hold requires a grounded finding, so ungrounded output adds zero holds (I5), and every false hold points to a real, quoted record entry (METHODS §7) | **Done** |
-| | | Empirical | 21 negative controls: 8 with distractors and 13 matched twins of hazard cases; false-hold rate and matched-pair discrimination per arm | **Ready to run** |
+| | | Empirical | 48 negative controls: 8 with distractors and 40 matched twins of hazard cases; false-hold rate and matched-pair discrimination per arm | **Ready to run** |
 | D4 | "… and automation risks" | Design + tests | B never edits A (tested); source entry shown for every interruption; holds and UNVERIFIED need acknowledgement; a failed check can never pass (I2, proven); narrow GREEN; anti-sycophancy | **Done** (clinician-behaviour user study: future work, stated) |
 | D5 | "expert evidence" | Expert | Blinded adjudication sheet with a separate key (`score.py --export-adjudication`); **κ, consensus, tie-break and adjudicated per-arm rates** (`adjudication.py`); gold-label validation step | **Ready to run** (needs clinicians) |
 | D6 | "simulated evidence" | Integration | Scripted models at the provider boundary exercise every path (hold, advisory, fail-closed, blocked, fabricated evidence, remote B refused) | **Done** |
@@ -83,17 +83,14 @@ manuscript is [`paper/jbhi/manuscript.tex`](../paper/jbhi/manuscript.tex)
 | F5 | Leak probe in every study run | Privacy measured in the real experiment |
 | F6 | Anchoring-free pre-answer scan run concurrently with A | Independence at no latency cost (METHODS §7) |
 | F7 | Supervisor held to anti-deception: fabricated citations or quotes disqualify its objections | The overseer is itself audited |
-| F8 | Deterministic privacy audit: 171 identifiers, 0 deterministic leaks, 125/125 clinical values preserved | Empirical privacy evidence already produced |
+| F8 | Deterministic privacy audit: 626 identifiers, 0 deterministic leaks, 385/385 clinical values preserved | Empirical privacy evidence already produced |
 
-## G. What only the author can complete
+## G. What remains, and who can do it
 
-1. Run the study with a local B and an A model:
-   `python evaluation/run_study.py --repeats 3`, then
-   `python evaluation/score.py …`. This completes D1, D2 and D3 empirically.
-2. Have one or two clinicians validate the gold labels, then independently
-   fill the blinded sheet and run `python evaluation/adjudication.py …`.
-   This completes D5.
-3. Fill every `\pending{}` in `paper/jbhi/manuscript.tex` (results table, abstract, affiliation), as measured,
-   including unfavourable ones.
-4. Optionally, measure de-identification recall on the i2b2/UTHealth 2014
-   corpus (requires a data-use agreement).
+| Step | Status | What is needed |
+|---|---|---|
+| Model study (completes D1–D3 empirically) | Harness ready and tested; configuration for hosted APIs documented | An API key in the environment settings (`GEMINI_API_KEY` and/or `ANTHROPIC_API_KEY`); then the study runs in this environment with `python evaluation/run_study.py --repeats 3` |
+| Gold-label validation | `results/label_validation.csv` generated (133 cases, de-identified, with the proposed label and its basis) | One or two clinicians mark CONFIRM/CORRECT; `export_label_validation.py --summarize` reports agreement and disputes. This cannot be done by the author of the system or by an AI: it is the expert evidence |
+| Output adjudication (completes D5) | Blinded sheet generated after the study run | Two clinicians; `adjudication.py` computes κ and adjudicated rates |
+| Manuscript `\pending{}` items | Marked in `paper/jbhi/manuscript.tex` | Results from the steps above; author affiliation |
+| Optional: de-identification recall on i2b2 2014 | Not started | Data-use agreement |

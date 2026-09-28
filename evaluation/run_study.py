@@ -71,6 +71,7 @@ def provenance(cases_path: str) -> dict:
         "code_dirty": dirty,
         "a_model": os.getenv("DUAL_LOBE_A_MODEL", ""),
         "b_model": os.getenv("DUAL_LOBE_B_VERIFY_MODEL") or os.getenv("DUAL_LOBE_B_MODEL", ""),
+        "b_locality_mode": os.getenv("DUAL_LOBE_CLINICAL_B_LOCALITY", "require"),
     }
 
 

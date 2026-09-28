@@ -11,7 +11,7 @@ exactly what remains to be run.
 | Kind | What | Result | Reproduce |
 |---|---|---|---|
 | Analytical (exhaustive verification) | Release-gate safety invariants I1–I7 (privacy dominates; fail closed; no interruption without grounded evidence; every grounded critical/major finding interrupts; ungrounded findings never interrupt; a clean release needs no findings and GREEN; no finding silently dropped) over the whole enumerated input space | 50,568 / 50,568 configurations satisfy all invariants | `pytest tests/test_gate_exhaustive.py` |
-| Empirical (deterministic) | Identifier leakage and clinical-content preservation in exactly what the remote lobe receives, 42 cases | 171 identifiers planted; 169 removed by the deterministic layer; 0 defects; 2 left for the local sweep by design; 125/125 clinical values preserved; 42/42 sessions crypto-shredded | `python evaluation/privacy_audit.py` |
+| Empirical (deterministic) | Identifier leakage and clinical-content preservation in exactly what the remote lobe receives, 133 cases | 626 identifiers planted; 624 removed by the deterministic layer; 0 defects; 2 left for the local sweep by design; 385/385 clinical values preserved; 133/133 sessions crypto-shredded | `python evaluation/privacy_audit.py` |
 | Integration (scripted models at the provider boundary) | No planted identifier reaches the remote lobe; every B call and the residual sweep go only to the local model; a remote B is refused before anything leaves; malformed supervisor output fails closed; fabricated evidence cannot interrupt; B never alters A's answer | all pass | `pytest tests/test_clinical_engine.py tests/test_clinical_privacy.py` |
 | Harness validation | Every study arm runs end to end, the leak probe works, scoring and blinded export work | pass | `pytest tests/test_evaluation.py` |
 
@@ -38,14 +38,15 @@ repository.
 
 ## Design
 
-* **Cases.** `benchmarks/clinical/cases.json` (v1.1) has 42 synthetic
-  cases: 19 unasked hazards across drug–drug, drug–disease, allergy,
-  pregnancy and childbearing potential, renal dosing, paediatric,
-  older-adult, device, red-flag and critical-result domains; 2
-  missing-information cases; and 21 negative controls. Of those, 8 are
+* **Cases.** `benchmarks/clinical/cases.json` (v2.0) has 133 synthetic
+  cases: 79 unasked hazards across drug–drug, drug–disease, allergy,
+  pregnancy, childbearing potential and lactation, renal and hepatic
+  dosing, pharmacogenomics, QT prolongation, paediatric, older-adult,
+  device, boxed-warning, red-flag and critical-result domains; 6
+  missing-information cases; and 48 negative controls. Of those, 8 are
   independent controls, several with deliberate distractors (an irrelevant
   sulfonamide allergy with cephalexin, amlodipine with atorvastatin). The
-  other 13 are **matched twins**: the same question as a hazard case with
+  other 40 are **matched twins**: the same question as a hazard case with
   only the hazard fact removed. Each case plants identifiers in structured
   fields and in narrative and records the clinical basis of its label. See
   `benchmarks/clinical/DATASHEET.md` for provenance.
@@ -84,11 +85,14 @@ hash) before the run.
 
 ## Sample size
 
-With 21 hazard cases and 21 negative controls × 3 repeats, the paired design can detect only large
-differences between arms. For a confirmatory claim, expand to at least ~100
-hazard cases and ~50 negative controls, ideally drawn from real,
-de-identified omission incidents (for example, local incident reports), and
-pre-register the analysis.
+With 85 hazard cases and 48 negative controls, each run 3 times, the
+paired design can detect moderate differences between arms (roughly 15
+percentage points or more, depending on how often arms disagree), not only
+large ones. Repeats are not independent samples, so report the per-case
+results and treat the case, not the run, as the unit for any confirmatory
+claim. External validity still requires real, de-identified omission
+incidents (for example, local incident reports). Pre-register the analysis
+by freezing the case-file hash before the run.
 
 ## How to run
 
@@ -105,6 +109,19 @@ python evaluation/run_study.py --arms a_only answer_verifier dual_lobe --repeats
 python evaluation/score.py results/study_<stamp>.jsonl --export-adjudication results/adjudication
 # two clinicians fill copies of adjudication_sheet.csv independently, then:
 python evaluation/adjudication.py results/adjudication/adjudication_key.json rater1.csv rater2.csv [--tiebreak rater3.csv]
+```
+
+**Synthetic-data variant with hosted APIs.** The benchmark contains no real
+patient data, so the model study may also be run with B on a hosted API.
+This environment can reach Google's and Anthropic's APIs. Disclose the
+configuration in the manuscript; locality enforcement itself is verified by
+the integration tests.
+
+```bash
+export DUAL_LOBE_A_MODEL=gemini/<model-id>          # reads GEMINI_API_KEY
+export DUAL_LOBE_B_MODEL=anthropic/<model-id>       # reads ANTHROPIC_API_KEY (a different family from A)
+export DUAL_LOBE_CLINICAL_B_LOCALITY=prefer         # synthetic data only; recorded in every result row
+python evaluation/run_study.py --arms a_only answer_verifier dual_lobe --repeats 3
 ```
 
 The study writes only de-identified outputs. The adjudication key (arm per

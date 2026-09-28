@@ -63,8 +63,8 @@ flowchart LR
 
 * **Release gate:** safety invariants verified over all 50,568 enumerated
   input configurations (`tests/test_gate_exhaustive.py`).
-* **Privacy audit** (42 cases, 171 planted identifiers): 0 deterministic
-  leaks, 2 left for the local sweep by design, 125/125 clinical values
+* **Privacy audit** (133 cases, 626 planted identifiers): 0 deterministic
+  leaks, 2 left for the local sweep by design, 385/385 clinical values
   preserved, all sessions crypto-shredded (`results/privacy_audit.json`).
 * **End-to-end tests at the provider boundary:** no identifier reaches the
   remote lobe; all B calls stay local; a remote B is refused.
@@ -85,7 +85,7 @@ cp .env.example .env
 dual-lobe-clinical --question "What ibuprofen dose for his knee OA?" \
                    --record patient.json --show-meta
 
-pytest -q                                   # 93 tests
+pytest -q                                   # 94 tests
 python evaluation/privacy_audit.py          # deterministic privacy audit
 python evaluation/run_study.py --repeats 3  # model study (needs models)
 python evaluation/score.py results/study_<stamp>.jsonl --export-adjudication results/adjudication
@@ -106,7 +106,7 @@ src/dual_lobe_clinical/  clinical layer
   control.py             grounding + release gate (deterministic)
   knowledge.py           evidence retrieval
   prompts.py, models.py
-benchmarks/clinical/     42-case omission benchmark (incl. 13 matched twins), datasheet
+benchmarks/clinical/     133-case omission benchmark (85 hazard, 48 controls incl. 40 matched twins), datasheet
 evaluation/              privacy audit, study runner, scorer
 docs/                    methods, privacy, related work, evaluation, reviewer response
 ```

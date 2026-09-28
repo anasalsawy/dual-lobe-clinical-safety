@@ -104,13 +104,13 @@ time, a content-free audit log, and the limitations below.
 
 | Metric | Value |
 |---|---|
-| Cases | 42 |
-| Identifiers planted | 171 |
-| Removed by the deterministic layer | 169 |
+| Cases | 133 |
+| Identifiers planted | 626 |
+| Removed by the deterministic layer | 624 |
 | Leaked defects | 0 |
 | Left for the local-B sweep (by design) | 2 ("Riverside Park" in a hazard case and its twin) |
-| Clinical values reaching A unchanged | 125 / 125 |
-| Sessions crypto-shredded | 42 / 42 |
+| Clinical values reaching A unchanged | 385 / 385 |
+| Sessions crypto-shredded | 133 / 133 |
 
 End-to-end tests (`tests/test_clinical_engine.py`) intercept every payload
 at the provider boundary. They check that no planted identifier reaches the

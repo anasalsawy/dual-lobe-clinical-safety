@@ -27,7 +27,7 @@ constructive. The work has been rebuilt around them:
 - an evidence retrieval mechanism (§IV-D);
 - a disagreement policy (§IV-C);
 - a failure taxonomy (§IV-E);
-- a complete open-source implementation with 93 automated tests;
+- a complete open-source implementation with 94 automated tests;
 - a comparison with existing verifier, guardrail, multi-agent, AI-control
   and CDS approaches (§II, Table I; 45 references).
 
@@ -38,7 +38,7 @@ Reporting follows DECIDE-AI and TRIPOD-LLM.
 paired three-arm study (§VII). The study compares the proposed supervisor
 against a primary model alone and against a conventional answer verifier
 using the same model, record and output schema. It uses a provenance-
-documented 42-case benchmark with a datasheet, a per-row SHA-256 and matched
+documented 133-case benchmark (85 hazard, 48 control) with a datasheet, a per-row SHA-256 and matched
 hazard/no-hazard twins that measure false alarms directly. Blinded
 adjudication is by two clinicians with Cohen's κ. Statistics are Wilson
 intervals and exact McNemar tests.

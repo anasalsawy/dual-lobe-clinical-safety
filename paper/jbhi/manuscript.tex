@@ -26,7 +26,7 @@
 \maketitle
 
 \begin{abstract}
-Language-model assistants answer the question a clinician asks, yet the safety-critical fact is often absent from the question: an analgesic dose is requested for a patient whose record shows advanced kidney disease. Verifiers, judges and guardrails check the answer against the question and inherit its blind spot. We specify, implement and evaluate a dual-lobe architecture in which a primary lobe answers from a de-identified record while a supervisory lobe, required to run on local infrastructure, reads the whole record before and independently of the answer, then audits the answer. Every supervisory finding must cite numbered record facts with verbatim quotes; citations are verified deterministically, and a seven-rule release gate lets only evidence-grounded critical or major findings interrupt the clinician, failing closed when supervision fails. A per-request privacy session replaces identifiers with random tokens held in an encrypted vault without a plaintext index, shifts dates, monitors every outbound payload by destination, and destroys its keys after each request. The gate satisfies seven safety invariants over all 50\,568 enumerated input configurations. On a 42-case benchmark with 171 planted identifiers, deterministic de-identification removed 169 with no defects, leaving two uncued place names for the local supervisory sweep, and delivered all 125 clinical values unchanged. A paired three-arm study (primary only; conventional answer verifier; context-conditioned supervisor) with matched hazard/no-hazard twins and blinded clinician adjudication measures omission detection and false alarms: \pending{headline results}.
+Language-model assistants answer the question a clinician asks, yet the safety-critical fact is often absent from the question: an analgesic dose is requested for a patient whose record shows advanced kidney disease. Verifiers, judges and guardrails check the answer against the question and inherit its blind spot. We specify, implement and evaluate a dual-lobe architecture in which a primary lobe answers from a de-identified record while a supervisory lobe, required to run on local infrastructure, reads the whole record before and independently of the answer, then audits the answer. Every supervisory finding must cite numbered record facts with verbatim quotes; citations are verified deterministically, and a seven-rule release gate lets only evidence-grounded critical or major findings interrupt the clinician, failing closed when supervision fails. A per-request privacy session replaces identifiers with random tokens held in an encrypted vault without a plaintext index, shifts dates, monitors every outbound payload by destination, and destroys its keys after each request. The gate satisfies seven safety invariants over all 50\,568 enumerated input configurations. On a 133-case benchmark with 626 planted identifiers, deterministic de-identification removed 624 with no defects, leaving two uncued place names for the local supervisory sweep, and delivered all 385 clinical values unchanged. A paired three-arm study (primary only; conventional answer verifier; context-conditioned supervisor) with matched hazard/no-hazard twins and blinded clinician adjudication measures omission detection and false alarms: \pending{headline results}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -161,7 +161,7 @@ so supervision adds exactly $P(M)P(D\mid M)$, which vanishes only if $B$'s misse
 
 \section{Evaluation Design}
 \subsection{Benchmark and provenance}
-Forty-two synthetic cases (Table~\ref{tab:bench}) cover drug--drug and drug--disease interactions, allergy, pregnancy and childbearing potential, renal dosing, paediatric \cite{fda2017} and older-adult \cite{ags2023} prescribing, implanted devices, boxed warnings, red flags and unaddressed critical results. Thirteen negative controls are \emph{matched twins}: the same question with only the hazard fact removed. Each label records its label- or guideline-level basis; all identifiers are fictitious and planted in structured fields and narrative. A datasheet \cite{gebru2021} documents composition and provenance; every output row records the benchmark's SHA-256, code commit and model identifiers. Labels are validated by independent clinicians before the run: \pending{validators, specialties, agreement}.
+The benchmark has 133 synthetic cases (Table~\ref{tab:bench}) in 17 clinical domains: drug--drug and drug--disease interactions; allergy and hypersensitivity; pregnancy, childbearing potential and lactation; renal and hepatic dosing; pharmacogenomics; QT prolongation; paediatric \cite{fda2017} and older-adult \cite{ags2023} prescribing; implanted devices; boxed warnings; red flags; unaddressed critical results; and missing dosing or baseline data. Forty of the 48 negative controls are \emph{matched twins}: the same question as a hazard case, with only the hazard fact removed. The other eight are independent controls, several with deliberate distractors. Each label records its label- or guideline-level basis; all identifiers are fictitious and planted in structured fields and narrative. A datasheet \cite{gebru2021} documents composition and provenance; every output row records the benchmark's SHA-256, code commit and model identifiers. Labels are validated by independent clinicians before the run: \pending{validators, specialties, agreement}. \pending{If the supervisory lobe is served through a hosted API for this synthetic study (no real patient data), state so; locality enforcement is verified separately by the integration tests.}
 
 \begin{table}[!t]
 \caption{Benchmark composition.}
@@ -170,11 +170,11 @@ Forty-two synthetic cases (Table~\ref{tab:bench}) cover drug--drug and drug--dis
 \begin{tabular}{@{}lr@{}}
 \toprule
 Case type & $n$\\\midrule
-Unasked hazard & 19\\
-Missing information & 2\\
+Unasked hazard & 79\\
+Missing information & 6\\
 Negative control, independent (with distractors) & 8\\
-Negative control, matched twin of a hazard case & 13\\\midrule
-Total (planted identifiers: 171) & 42\\\bottomrule
+Negative control, matched twin of a hazard case & 40\\\midrule
+Total (planted identifiers: 626) & 133\\\bottomrule
 \end{tabular}
 \end{table}
 
@@ -189,17 +189,17 @@ Exhaustive enumeration over supervision mode, privacy/primary/supervisor flags, 
 Table~\ref{tab:privacy} reports a deterministic audit of the exact text the answering model receives. Integration tests intercepting every payload at the provider boundary confirmed that no planted identifier reached the remote lobe, that the residual sweep and all supervisory calls reached only the local model, and that a configuration with a remote supervisor was refused before any payload left.
 
 \begin{table}[!t]
-\caption{Deterministic privacy audit (42 cases).}
+\caption{Deterministic privacy audit (133 cases).}
 \label{tab:privacy}
 \centering\footnotesize
 \begin{tabular}{@{}lr@{}}
 \toprule
-Identifiers planted & 171\\
-Removed by deterministic layer & 169\\
+Identifiers planted & 626\\
+Removed by deterministic layer & 624\\
 Leaks attributable to deterministic layer & 0\\
 Left for local residual sweep (uncued place name) & 2\\
-Clinical values delivered unchanged & 125/125\\
-Sessions with keys destroyed & 42/42\\\bottomrule
+Clinical values delivered unchanged & 385/385\\
+Sessions with keys destroyed & 133/133\\\bottomrule
 \end{tabular}
 \end{table}
 
@@ -210,7 +210,7 @@ Sessions with keys destroyed & 42/42\\\bottomrule
 The central claim is narrow and testable: a supervisor conditioned on the whole record, formed before seeing the answer, surfaces omitted hazards that an answer-conditioned verifier with the same model and information does not, while discriminating hazard from matched no-hazard records. False alarms are treated as a first-class harm and automation bias as a design constraint: the supervisor never edits the answer and always points to the record entry behind an interruption. The dual-lobe split also carries the privacy argument: only a local model may read text before it is cleared to leave, making the supervisor the natural residual de-identifier---a role neither rules \cite{stubbs2015,neamatullah2008} nor a remote model can fill. \pending{interpretation of results, including unfavourable ones}.
 
 \section{Limitations}
-Cases are synthetic, short and author-written; labels require clinician validation, and the sample detects only large between-arm differences---a confirmatory study needs roughly 100 or more hazard cases, ideally from real incident reports. Automated scoring is a screen; adjudication is primary. The privacy audit is in-sample and is not an estimate of de-identification recall, which should be measured on a standard corpus \cite{stubbs2015}; quasi-identifiers in narrative remain \cite{sweeney2000}; Python cannot guarantee erasure of transient string copies. Effects on clinician behaviour require a user study. The system is research software, not a medical device.
+Cases are synthetic, short and author-written; labels require clinician validation. With 85 hazard cases the paired design detects moderate between-arm differences; repeats are not independent samples, and external validity requires real incident reports. Automated scoring is a screen; adjudication is primary. The privacy audit is in-sample and is not an estimate of de-identification recall, which should be measured on a standard corpus \cite{stubbs2015}; quasi-identifiers in narrative remain \cite{sweeney2000}; Python cannot guarantee erasure of transient string copies. Effects on clinician behaviour require a user study. The system is research software, not a medical device.
 
 \section{Conclusion}
 We turned the intuition that a clinical safety layer should look beyond the literal question into a specified, exhaustively verified and privacy-preserving architecture, with an evaluation that isolates context conditioning against a same-model verifier. Code, prompts, benchmark, datasheet and evaluation scripts are available at \url{https://github.com/anasalsawy/dual-lobe-clinical-safety}.
