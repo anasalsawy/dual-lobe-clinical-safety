@@ -64,49 +64,38 @@ async def run_one(
     else:
         state_key = None
     specs = _round_robin_specs(role_key, resolve_role_specs(role_key))
-    max_rounds = max(1, int(os.getenv("DUAL_LOBE_RETRY_ROUNDS", "3")))
-    failover = os.getenv("DUAL_LOBE_FAILOVER_ON_RATE_LIMIT", "true").lower() in {"1", "true", "yes", "on"}
-    last_exc = None
+    if not specs:
+        raise RuntimeError("No LLM providers configured")
 
-    for round_no in range(1, max_rounds + 1):
-        candidates = specs if (round_no == 1 or failover) else specs[:1]
-        for idx, original_spec in enumerate(candidates):
-            await RATE_CONTROLLER.ensure_discovered(original_spec)
-            input_est = RATE_CONTROLLER.estimate_input_tokens(description + "\n" + expected_output)
-            spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
-            estimated_total = input_est + spec.max_tokens
-            await RATE_CONTROLLER.acquire(spec, estimated_total)
-            native_state = await NATIVE_INFERENCE_STATE.prepare(
-                base_url=spec.base_url,
-                state_key=state_key,
-            )
-            _set_llm(
-                agent,
-                make_llm(
-                    role_key,
-                    spec=spec,
-                    extra_body=native_state.extra_body if native_state else None,
-                ),
-            )
-            try:
-                out = await _single_call(agent, description, expected_output)
-                if out is None or not str(out).strip():
-                    raise ValueError("Invalid response from LLM call - None or empty.")
-                await NATIVE_INFERENCE_STATE.checkpoint(native_state)
-                return str(out)
-            except Exception as exc:
-                NATIVE_INFERENCE_STATE.release(native_state)
-                last_exc = exc
-                kind = RATE_CONTROLLER.classify_error(exc)
-                RATE_CONTROLLER.learn_from_error(spec, exc)
-                if idx + 1 < len(candidates) and kind in {"rate_limit", "transient", "auth"}:
-                    continue
-                if kind not in {"rate_limit", "transient"}:
-                    break
+    # Strict round-robin: exactly one provider is selected for this logical call.
+    # Errors do not trigger a same-request jump to another provider.
+    original_spec = specs[0]
+    await RATE_CONTROLLER.ensure_discovered(original_spec)
+    input_est = RATE_CONTROLLER.estimate_input_tokens(description + "\n" + expected_output)
+    spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
+    estimated_total = input_est + spec.max_tokens
+    await RATE_CONTROLLER.acquire(spec, estimated_total)
 
-        if round_no < max_rounds and last_exc is not None:
-            await asyncio.sleep(RATE_CONTROLLER.retry_delay(specs[0], round_no))
+    native_state = await NATIVE_INFERENCE_STATE.prepare(
+        base_url=spec.base_url,
+        state_key=state_key,
+    )
+    _set_llm(
+        agent,
+        make_llm(
+            role_key,
+            spec=spec,
+            extra_body=native_state.extra_body if native_state else None,
+        ),
+    )
 
-    if last_exc is not None:
-        raise last_exc
-    raise RuntimeError("No LLM candidates available")
+    try:
+        out = await _single_call(agent, description, expected_output)
+        if out is None or not str(out).strip():
+            raise ValueError("Invalid response from LLM call - None or empty.")
+        await NATIVE_INFERENCE_STATE.checkpoint(native_state)
+        return str(out)
+    except Exception as exc:
+        NATIVE_INFERENCE_STATE.release(native_state)
+        RATE_CONTROLLER.learn_from_error(spec, exc)
+        raise
