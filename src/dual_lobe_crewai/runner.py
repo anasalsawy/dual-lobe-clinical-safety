@@ -2,12 +2,27 @@ from __future__ import annotations
 
 import asyncio
 import os
+import threading
 
 from crewai import Crew, Process, Task
 
 from .llm_factory import make_llm, resolve_role_specs
 from .provider_control import RATE_CONTROLLER
 from .inference_state import NATIVE_INFERENCE_STATE
+
+
+_RR_LOCK = threading.Lock()
+_RR_INDEX: dict[str, int] = {}
+
+
+def _round_robin_specs(role_key: str, specs):
+    """Rotate a role's configured providers so each call starts on the next one."""
+    if len(specs) <= 1:
+        return list(specs)
+    with _RR_LOCK:
+        start = _RR_INDEX.get(role_key, 0) % len(specs)
+        _RR_INDEX[role_key] = (start + 1) % len(specs)
+    return list(specs[start:]) + list(specs[:start])
 
 
 def _infer_role_key(agent) -> str:
@@ -48,7 +63,7 @@ async def run_one(
         state_key = state_key or role_key
     else:
         state_key = None
-    specs = resolve_role_specs(role_key)
+    specs = _round_robin_specs(role_key, resolve_role_specs(role_key))
     max_rounds = max(1, int(os.getenv("DUAL_LOBE_RETRY_ROUNDS", "3")))
     failover = os.getenv("DUAL_LOBE_FAILOVER_ON_RATE_LIMIT", "true").lower() in {"1", "true", "yes", "on"}
     last_exc = None
