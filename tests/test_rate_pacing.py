@@ -159,8 +159,10 @@ def test_web_discovery_is_cached(monkeypatch):
 
     monkeypatch.setattr(ctl, "_fetch_text", fake_fetch)
     asyncio.run(ctl.ensure_discovered(s))
+    first_pass_calls = calls["n"]
+    assert first_pass_calls >= 1
     asyncio.run(ctl.ensure_discovered(s))
-    assert calls["n"] == 1
+    assert calls["n"] == first_pass_calls
 
 
 def test_web_discovery_failure_falls_back_to_preset(monkeypatch):
