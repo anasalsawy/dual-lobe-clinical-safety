@@ -81,11 +81,12 @@ async def run(args) -> Path:
     index_date = date.fromisoformat(suite["index_date"])
     cases = [c for c in suite["cases"] if not args.only or c["id"] in args.only]
     done: set[tuple] = set()
-    if args.resume:
+    resume = getattr(args, "resume", None)
+    if resume:
         # Append to an interrupted run (e.g. a provider's daily quota ran out),
         # skipping every case/arm/repeat that already has a row. Rows that
         # failed with an exception are retried; fail-closed releases are kept.
-        out = Path(args.resume)
+        out = Path(resume)
         for line in out.read_text(encoding="utf-8").splitlines():
             r = json.loads(line)
             if "error" not in r:
@@ -98,7 +99,7 @@ async def run(args) -> Path:
     probe = LeakProbe()
     register_egress_filter(probe)
     try:
-        with out.open("a" if args.resume else "w", encoding="utf-8") as fh:
+        with out.open("a" if resume else "w", encoding="utf-8") as fh:
             for repeat in range(args.repeats):
                 for case in cases:
                     for arm in args.arms:

@@ -98,6 +98,15 @@ async def test_harness_runs_end_to_end_with_scripted_models(monkeypatch, tmp_pat
     sheet = (tmp_path / "adj" / "adjudication_sheet.csv").read_text()
     assert "dual_lobe" not in sheet and "answer_verifier" not in sheet  # blinded
 
+    # Resume: drop the last row (as if the run was cut off) and append only it.
+    lines = out.read_text().splitlines()
+    out.write_text("\n".join(lines[:-1]) + "\n")
+    args.resume = str(out)
+    assert await run_study.run(args) == out
+    resumed = [json.loads(x) for x in out.read_text().splitlines()]
+    assert len(resumed) == 6
+    assert {(r["case_id"], r["arm"]) for r in resumed} == {(r["case_id"], r["arm"]) for r in rows}
+
 
 def test_repeat_consistency_and_per_case_tally():
     cases = {c["id"]: c for c in SUITE["cases"]}
