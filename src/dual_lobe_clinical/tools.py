@@ -182,6 +182,7 @@ Return the actual result and any tool evidence or failure."""
                         prompt,
                         "A self-contained execution result for the assigned plan step.",
                         role_key="B_CLINICAL",
+                        persistent_state=False,
                     )
                 )
 
