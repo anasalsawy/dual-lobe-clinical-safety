@@ -12,7 +12,6 @@ def test_verify_frozen_bundle_rejects_changed_file(tmp_path):
     bundle.mkdir()
     files={
         "clinical_cases.primary.jsonl":"{}\n",
-        "evidence_manifest.primary.json":"{}",
         "guardian_manifest.primary.json":"{}",
         "gold_review_consensus.json":"{}",
     }
@@ -35,11 +34,11 @@ def test_score_primary_refuses_partial_consensus(tmp_path):
     run.mkdir()
     raw=run/"raw_results.jsonl"
     raw.write_text(json.dumps({
-        "case_id":"C1","pair_id":"P1","domain":"x","arm":"A0",
+        "case_id":"C1","pair_id":"P1","domain":"x",
         "gold":{"material_hazard_present":True},"result":{"candidate_answer":"x"}
     })+"\n",encoding="utf-8")
     (run/"PRIVATE_blinding_key.json").write_text(json.dumps({
-        "mapping":{"S1":{"case_id":"C1","arm":"A0"}}
+        "mapping":{"S1":"C1"}
     }),encoding="utf-8")
     (run/"primary_run_manifest.json").write_text(json.dumps({
         "raw_results_sha256":hashlib.sha256(raw.read_bytes()).hexdigest()

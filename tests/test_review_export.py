@@ -6,13 +6,12 @@ from dual_lobe_clinical.adjudication import (
 )
 
 
-def test_blinded_export_contains_no_arm_or_case_identity():
+def test_blinded_export_contains_no_case_identity():
     rows = [{
         "case_id":"CASE-1",
         "pair_id":"PAIR",
         "domain":"renal",
         "difficulty":"moderate",
-        "arm":"A3",
         "patient_context":{"eGFR":19},
         "query":"q",
         "gold":{"material_hazard_present":True},
@@ -20,19 +19,17 @@ def test_blinded_export_contains_no_arm_or_case_identity():
     }]
     package, key = export_blinded_review_package(rows, salt="secret")
     serialized = json.dumps(package)
-    assert "A3" not in serialized
     assert "CASE-1" not in serialized
     sid = package[0]["sample_id"]
-    assert key[sid] == {"case_id":"CASE-1","arm":"A3"}
+    assert key[sid] == "CASE-1"
 
 
 def test_consensus_attachment_uses_hidden_key():
     rows = [{
         "case_id":"CASE-1",
-        "arm":"A0",
         "gold":{"material_hazard_present":True},
     }]
-    key = {"S-1":{"case_id":"CASE-1","arm":"A0"}}
+    key = {"S-1":"CASE-1"}
     consensus = {
         "S-1":{
             "reviewer_count":2,
