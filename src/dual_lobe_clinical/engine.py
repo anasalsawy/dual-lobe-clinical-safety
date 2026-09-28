@@ -79,8 +79,15 @@ class ClinicalDualLobeEngine:
         expected_output: str,
         *,
         role_key: str,
+        state_key: str | None = None,
     ) -> str:
-        result = await run_one(agent, prompt, expected_output, role_key=role_key)
+        result = await run_one(
+            agent,
+            prompt,
+            expected_output,
+            role_key=role_key,
+            state_key=state_key,
+        )
         text = str(result or "").strip()
         if not text:
             raise RuntimeError(f"{role_key} returned an empty response")
@@ -92,6 +99,7 @@ class ClinicalDualLobeEngine:
             build_plan_prompt(query=query, patient_context=patient_context),
             "Strict JSON full execution plan.",
             role_key="A",
+            state_key="clinical:A",
         )
         return Plan.from_text(raw)
 
@@ -115,6 +123,7 @@ class ClinicalDualLobeEngine:
             ),
             "Strict JSON revised full execution plan.",
             role_key="A",
+            state_key="clinical:A",
         )
         return Plan.from_text(raw)
 
@@ -160,6 +169,7 @@ class ClinicalDualLobeEngine:
             ),
             "Strict JSON execution report grounded in the current plan and actual tool results.",
             role_key="B_CLINICAL",
+            state_key="clinical:B",
         )
 
     async def _final_review(
@@ -185,6 +195,7 @@ class ClinicalDualLobeEngine:
             ),
             "A concise user-facing answer that checks execution against the plan.",
             role_key="A",
+            state_key="clinical:A",
         )
 
     async def run_clinical(
