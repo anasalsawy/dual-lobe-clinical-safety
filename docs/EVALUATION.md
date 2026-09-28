@@ -124,6 +124,26 @@ export DUAL_LOBE_CLINICAL_B_LOCALITY=prefer         # synthetic data only; recor
 python evaluation/run_study.py --arms a_only answer_verifier dual_lobe --repeats 3
 ```
 
+Configuration used for the reported run (free tiers of two providers, so A
+and B come from different model families and draw on separate quotas; B is
+open-weight and could be served locally in deployment). crewAI has no native
+Groq provider, so B uses the OpenAI-compatible endpoint:
+
+```bash
+export DUAL_LOBE_A_MODEL=gemini/gemini-3.5-flash-lite  DUAL_LOBE_A_API_KEY=$GEMINI_API_KEY
+export DUAL_LOBE_B_MODEL=openai/openai/gpt-oss-120b    DUAL_LOBE_B_API_KEY=$GROQ_API_KEY
+export DUAL_LOBE_B_BASE_URL=https://api.groq.com/openai/v1
+export DUAL_LOBE_CLINICAL_B_LOCALITY=prefer
+export DUAL_LOBE_CROSS_ROLE_FAILOVER=false   # B must never fall back to A's model
+export DUAL_LOBE_A_RPM=10 DUAL_LOBE_B_RPM=25 DUAL_LOBE_B_TPM=8000 DUAL_LOBE_RATE_SAFETY=1
+export DUAL_LOBE_RETRY_ROUNDS=6 DUAL_LOBE_RETRY_MAX_SECONDS=60
+```
+
+Free-tier quotas are per model and per day (for example, 20 requests/day for
+`gemini-3.8-flash` at the time of the run), so check them before choosing A.
+Run one process: provider rate limits are per account, and the runtime's
+rate controller is per process.
+
 The study writes only de-identified outputs. The adjudication key (arm per
 item) is written separately so raters stay blind.
 
