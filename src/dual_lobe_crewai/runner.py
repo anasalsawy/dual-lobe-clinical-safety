@@ -67,35 +67,41 @@ async def run_one(
     if not specs:
         raise RuntimeError("No LLM providers configured")
 
-    # Strict round-robin: exactly one provider is selected for this logical call.
-    # Errors do not trigger a same-request jump to another provider.
-    original_spec = specs[0]
-    await RATE_CONTROLLER.ensure_discovered(original_spec)
-    input_est = RATE_CONTROLLER.estimate_input_tokens(description + "\n" + expected_output)
-    spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
-    estimated_total = input_est + spec.max_tokens
-    await RATE_CONTROLLER.acquire(spec, estimated_total)
+    # Round-robin start point for each logical call. If the selected provider
+    # errors, immediately try the next provider in the same cyclic order.
+    last_exc = None
+    for original_spec in specs:
+        await RATE_CONTROLLER.ensure_discovered(original_spec)
+        input_est = RATE_CONTROLLER.estimate_input_tokens(description + "\n" + expected_output)
+        spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
+        estimated_total = input_est + spec.max_tokens
+        await RATE_CONTROLLER.acquire(spec, estimated_total)
 
-    native_state = await NATIVE_INFERENCE_STATE.prepare(
-        base_url=spec.base_url,
-        state_key=state_key,
-    )
-    _set_llm(
-        agent,
-        make_llm(
-            role_key,
-            spec=spec,
-            extra_body=native_state.extra_body if native_state else None,
-        ),
-    )
+        native_state = await NATIVE_INFERENCE_STATE.prepare(
+            base_url=spec.base_url,
+            state_key=state_key,
+        )
+        _set_llm(
+            agent,
+            make_llm(
+                role_key,
+                spec=spec,
+                extra_body=native_state.extra_body if native_state else None,
+            ),
+        )
 
-    try:
-        out = await _single_call(agent, description, expected_output)
-        if out is None or not str(out).strip():
-            raise ValueError("Invalid response from LLM call - None or empty.")
-        await NATIVE_INFERENCE_STATE.checkpoint(native_state)
-        return str(out)
-    except Exception as exc:
-        NATIVE_INFERENCE_STATE.release(native_state)
-        RATE_CONTROLLER.learn_from_error(spec, exc)
-        raise
+        try:
+            out = await _single_call(agent, description, expected_output)
+            if out is None or not str(out).strip():
+                raise ValueError("Invalid response from LLM call - None or empty.")
+            await NATIVE_INFERENCE_STATE.checkpoint(native_state)
+            return str(out)
+        except Exception as exc:
+            NATIVE_INFERENCE_STATE.release(native_state)
+            RATE_CONTROLLER.learn_from_error(spec, exc)
+            last_exc = exc
+            continue
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("No LLM providers available")
