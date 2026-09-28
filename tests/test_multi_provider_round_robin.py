@@ -1,0 +1,25 @@
+from dual_lobe_crewai import runner
+
+
+class Spec:
+    def __init__(self, label):
+        self.label = label
+
+
+def test_round_robin_rotates_each_role_independently():
+    runner._RR_INDEX.clear()
+    specs = [Spec("p1"), Spec("p2"), Spec("p3")]
+
+    assert [x.label for x in runner._round_robin_specs("A", specs)] == ["p1", "p2", "p3"]
+    assert [x.label for x in runner._round_robin_specs("A", specs)] == ["p2", "p3", "p1"]
+    assert [x.label for x in runner._round_robin_specs("A", specs)] == ["p3", "p1", "p2"]
+    assert [x.label for x in runner._round_robin_specs("A", specs)] == ["p1", "p2", "p3"]
+
+    # B maintains its own pointer.
+    assert [x.label for x in runner._round_robin_specs("B_VERIFY", specs)] == ["p1", "p2", "p3"]
+
+
+def test_round_robin_single_provider_is_unchanged():
+    runner._RR_INDEX.clear()
+    specs = [Spec("only")]
+    assert [x.label for x in runner._round_robin_specs("A", specs)] == ["only"]
