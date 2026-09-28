@@ -27,7 +27,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from dual_lobe_crewai.runner import register_egress_filter, unregister_egress_filter
+from dual_lobe_crewai.runner import SERVED_CALLS, register_egress_filter, unregister_egress_filter
 from dual_lobe_clinical import egress
 from dual_lobe_clinical.engine import ClinicalDualLobeEngine, ClinicalRequest
 from dual_lobe_clinical.locality import is_local_spec
@@ -106,6 +106,7 @@ async def run(args) -> Path:
                         if (case["id"], arm, repeat) in done:
                             continue
                         probe.planted, probe.leaks, probe.remote_payloads = list(case.get("phi", [])), [], 0
+                        SERVED_CALLS.clear()
                         engine = ClinicalDualLobeEngine(**ARMS[arm])
                         t0 = time.perf_counter()
                         try:
@@ -138,6 +139,7 @@ async def run(args) -> Path:
                             row = {"case_id": case["id"], "case_type": case["type"], "arm": arm, "repeat": repeat,
                                    "error": f"{type(exc).__name__}: {exc}",
                                    "elapsed_ms": int((time.perf_counter() - t0) * 1000)}
+                        row["served_by"] = [{"role": r, "provider": lbl, "model": m} for r, lbl, m in SERVED_CALLS]
                         row["provenance"] = prov
                         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                         fh.flush()

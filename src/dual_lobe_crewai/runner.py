@@ -17,6 +17,9 @@ class EgressDenied(RuntimeError):
 EgressFilter = Callable[[ProviderSpec, str], str]
 _EGRESS_FILTERS: list[EgressFilter] = []
 
+# (role, provider label, model) of every successful call, so callers can record which provider actually served.
+SERVED_CALLS: list[tuple[str, str, str]] = []
+
 
 def register_egress_filter(fn: EgressFilter) -> None:
     """Install a filter applied to every prompt before it is sent to a provider.
@@ -97,6 +100,7 @@ async def run_one(
                 out = await _single_call(agent, guarded_description, guarded_expected)
                 if out is None or not str(out).strip():
                     raise ValueError("Invalid response from LLM call - None or empty.")
+                SERVED_CALLS.append((role_key, spec.label, spec.model))
                 return str(out)
             except Exception as exc:
                 last_exc = exc

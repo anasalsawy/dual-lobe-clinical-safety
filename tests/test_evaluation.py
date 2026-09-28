@@ -90,6 +90,7 @@ async def test_harness_runs_end_to_end_with_scripted_models(monkeypatch, tmp_pat
     assert all(r["privacy"]["remote_payloads"] >= 1 for r in rows)
     assert len({r["provenance"]["cases_sha256"] for r in rows}) == 1
     assert rows[0]["provenance"]["a_model"].startswith("openrouter/")
+    assert all(r["served_by"] and all(s["provider"] and s["model"] for s in r["served_by"]) for r in rows)
     report = score.score(rows, {c["id"]: c for c in SUITE["cases"]})
     assert set(report["arms"]) == {"a_only", "answer_verifier", "dual_lobe"}
     assert report["arms"]["dual_lobe"]["false_holds"] == 0
