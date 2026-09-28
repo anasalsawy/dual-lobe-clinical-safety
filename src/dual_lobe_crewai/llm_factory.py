@@ -88,10 +88,14 @@ def _is_local_base_url(base_url: str | None) -> bool:
 
 
 def _assert_clinical_b_local(spec: ProviderSpec) -> None:
+    testing_mode = os.getenv("DUAL_LOBE_TESTING_MODE", "false").lower() in {"1", "true", "yes", "on"}
+    local_only = os.getenv("DUAL_LOBE_CLINICAL_B_LOCAL_ONLY", "true").lower() in {"1", "true", "yes", "on"}
+    if testing_mode and not local_only:
+        return
     if not _is_local_base_url(spec.base_url):
         raise ValueError(
-            "B_CLINICAL is local-only. Set DUAL_LOBE_CLINICAL_B_BASE_URL to a loopback/local endpoint "
-            "(for example http://127.0.0.1:11434/v1). Remote B endpoints are rejected."
+            "B_CLINICAL is local-only unless testing mode is explicitly enabled with "
+            "DUAL_LOBE_TESTING_MODE=true and DUAL_LOBE_CLINICAL_B_LOCAL_ONLY=false."
         )
 
 
