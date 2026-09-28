@@ -41,9 +41,13 @@ async def run_one(
     *,
     role_key: str | None = None,
     state_key: str | None = None,
+    persistent_state: bool = True,
 ) -> str:
     role_key = (role_key or _infer_role_key(agent)).upper()
-    state_key = state_key or role_key
+    if persistent_state:
+        state_key = state_key or role_key
+    else:
+        state_key = None
     specs = resolve_role_specs(role_key)
     max_rounds = max(1, int(os.getenv("DUAL_LOBE_RETRY_ROUNDS", "3")))
     failover = os.getenv("DUAL_LOBE_FAILOVER_ON_RATE_LIMIT", "true").lower() in {"1", "true", "yes", "on"}
