@@ -1,0 +1,510 @@
+{
+  "summary": {
+    "cases": 29,
+    "identifiers_planted": 115,
+    "removed_by_deterministic_layer": 114,
+    "leaked_defects": 0,
+    "left_for_local_b_sweep": 1,
+    "clinical_values_preserved": 97,
+    "clinical_values_altered": 0,
+    "all_sessions_crypto_shredded": true
+  },
+  "cases": [
+    {
+      "id": "H01",
+      "planted": 10,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 3,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 2,
+        "DOB": 1,
+        "ID": 1,
+        "PHONE": 1,
+        "LOCATION": 3,
+        "DATE": 1
+      },
+      "detection_sources": {
+        "structured_field": 7,
+        "date_pattern": 1,
+        "known_identifier_propagation": 1,
+        "pattern": 1
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H02",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 9,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "EMAIL": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H03",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3,
+        "known_identifier_propagation": 1
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H04",
+      "planted": 5,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 2,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3,
+        "pattern": 1
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H05",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 5,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "PHONE": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H06",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 3,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 2,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H07",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 5,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H08",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 3,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "EMAIL": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H09",
+      "planted": 6,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 1,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 2,
+        "DOB": 1,
+        "PHONE": 1,
+        "DATE": 1
+      },
+      "detection_sources": {
+        "structured_field": 2,
+        "pattern": 2,
+        "known_identifier_propagation": 1,
+        "date_pattern": 1
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H10",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 4,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H11",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 3,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H12",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "PHONE": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H13",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [
+        "Riverside Park"
+      ],
+      "clinical_values_preserved": 1,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H14",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 5,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H15",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H16",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 4,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H17",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 4,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H18",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 3,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "PHONE": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "H19",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 2,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2,
+        "pattern": 1
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "M01",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 3,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "M02",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N01",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "EMAIL": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N02",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 2,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N03",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 4,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "ID": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N04",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 5,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N05",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 4,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N06",
+      "planted": 4,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 4,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1,
+        "PHONE": 1
+      },
+      "detection_sources": {
+        "structured_field": 3
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N07",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 3,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    },
+    {
+      "id": "N08",
+      "planted": 3,
+      "leaked_defects": [],
+      "residual_for_local_sweep": [],
+      "clinical_values_preserved": 5,
+      "clinical_values_altered": [],
+      "identifiers_by_category": {
+        "NAME": 1,
+        "DOB": 1
+      },
+      "detection_sources": {
+        "structured_field": 2
+      },
+      "crypto_shredded": true
+    }
+  ]
+}

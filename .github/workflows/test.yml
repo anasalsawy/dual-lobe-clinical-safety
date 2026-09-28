@@ -2,7 +2,7 @@ name: test
 
 on:
   push:
-    branches: [main]
+  pull_request:
 
 jobs:
   pytest:
@@ -15,3 +15,5 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: pip install -e . pytest pytest-asyncio
       - run: pytest -q
+      - name: Deterministic privacy audit
+        run: python evaluation/privacy_audit.py --out /tmp/privacy_audit.json

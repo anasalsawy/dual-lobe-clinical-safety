@@ -15,7 +15,7 @@ jobs:
           mkdir -p dist/dual-lobe-model
           cp -r src dist/dual-lobe-model/
           cp pyproject.toml .env.example README.md CHECKPOINT.md dist/dual-lobe-model/
-          cp -r benchmarks dist/dual-lobe-model/
+          cp -r benchmarks evaluation docs dist/dual-lobe-model/
           cp -r tests dist/dual-lobe-model/
           cp .gitignore dist/dual-lobe-model/
           cd dist
