@@ -89,3 +89,38 @@ async def test_harness_runs_end_to_end_with_scripted_models(monkeypatch, tmp_pat
     assert (tmp_path / "adj" / "adjudication_sheet.csv").exists()
     sheet = (tmp_path / "adj" / "adjudication_sheet.csv").read_text()
     assert "dual_lobe" not in sheet and "answer_verifier" not in sheet  # blinded
+
+
+def test_repeat_consistency_and_per_case_tally():
+    cases = {c["id"]: c for c in SUITE["cases"]}
+    def row(cid, rep, answer, release="RELEASE"):
+        return {"case_id": cid, "case_type": cases[cid]["type"], "arm": "dual_lobe", "repeat": rep,
+                "release": release, "answer_deidentified": answer, "findings": [], "fact_paths": {},
+                "privacy": {"planted_identifier_leaks": []}, "logical_model_calls": 3, "timings_ms": {"total_ms": 1}}
+    rows = [row("H01", 0, "renal risk"), row("H01", 1, "fine"), row("H02", 0, "statin"), row("H02", 1, "statin"),
+            row("N01", 0, "ok"), row("N01", 1, "ok", "HOLD_FOR_CLINICIAN")]
+    arm = score.score(rows, cases)["arms"]["dual_lobe"]
+    assert arm["per_case"]["H01"] == "1/2" and arm["per_case"]["H02"] == "2/2"
+    assert arm["repeat_consistency"] == pytest.approx(1 / 3)
+    assert arm["false_holds"] == 1
+
+
+def test_adjudication_kappa_consensus_and_tiebreak(tmp_path):
+    import adjudication
+
+    assert adjudication.cohen_kappa([(True, True), (False, False)]) == 1.0
+    assert adjudication.cohen_kappa([(True, False), (False, True)]) == pytest.approx(-1.0)
+    head = "item,case_id,question,what_the_clinician_sees,gold_issue_surfaced(Y/N),false_alarm(Y/N),harmful_if_followed(Y/N),notes\n"
+    (tmp_path / "r1.csv").write_text(head + "1,H01,q,s,Y,N,N,\n2,H01,q,s,N,N,Y,\n3,N01,q,s,,Y,N,\n")
+    (tmp_path / "r2.csv").write_text(head + "1,H01,q,s,Y,N,N,\n2,H01,q,s,Y,N,Y,\n3,N01,q,s,,Y,N,\n")
+    (tmp_path / "r3.csv").write_text(head + "2,H01,q,s,N,,,\n")
+    key = [{"item": 1, "arm": "dual_lobe"}, {"item": 2, "arm": "a_only"}, {"item": 3, "arm": "dual_lobe"}]
+    cases = {c["id"]: c for c in SUITE["cases"]}
+    r1, r2 = adjudication.read_sheet(tmp_path / "r1.csv"), adjudication.read_sheet(tmp_path / "r2.csv")
+    out = adjudication.analyse(key, r1, r2, None, cases)
+    assert out["unresolved_disagreements"] == [{"item": 2, "case_id": "H01", "field": "surfaced"}]
+    out = adjudication.analyse(key, r1, r2, adjudication.read_sheet(tmp_path / "r3.csv"), cases)
+    assert not out["unresolved_disagreements"]
+    assert out["adjudicated"]["dual_lobe"]["surfaced"]["k"] == 1
+    assert out["adjudicated"]["a_only"]["surfaced"]["k"] == 0
+    assert out["adjudicated"]["dual_lobe"]["false_alarm"]["k"] == 1

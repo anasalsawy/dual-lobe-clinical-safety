@@ -167,7 +167,63 @@ is worth noting and does not change the plan.
 | Identifier retention after use | Session keys destroyed in `finally`; no plaintext index; ephemeral memory | `PrivacySession.destroy`, `EphemeralMemoryStore` |
 | Correlated error between lobes | Different conditioning (question vs whole record), no shared context before the audit, and ideally a different model (local B vs remote A) | architecture |
 
-## 7. What is deliberately not claimed
+## 7. Analytical properties
+
+These follow from the construction. They are verified by
+`tests/test_gate_exhaustive.py` (G1–G3) and by the provider-boundary tests
+(P1), and they state exactly what the empirical study still has to measure.
+
+**Detection.** For a case whose record holds a hazard, let *M* be the event
+that A's answer misses it and *D* the event that B raises a grounded
+interrupting finding on it. The clinician is shown the hazard with probability
+
+  P(surfaced) = P(¬M) + P(M) · P(D | M).
+
+The supervisor's added value is exactly P(M)·P(D | M). It is zero only when
+B always fails where A fails. The design therefore targets the *conditional*
+detection P(D | M), and this is what separates it from an answer-conditioned
+verifier. A verifier inherits the question's framing, so its misses are
+expected to correlate with A's. B's context conditioning, its pre-answer
+scan without A's output, and a different (local) model all aim to break that
+correlation. The paired `dual_lobe` vs `answer_verifier` comparison estimates
+the difference in P(D | M) with everything else held fixed.
+
+**False alarms.**
+- (G1) On any case, a hold happens only if a finding is grounded: it cites
+  record entries that exist, with a quote that occurs in them. Ungrounded
+  output contributes nothing to the hold rate (invariant I5).
+- So every false hold is a *misjudgement of a real record entry*, never a
+  fabricated one. The false-hold rate equals the rate at which B overrates a
+  genuine fact as critical/major. That quantity is measured on negative
+  controls, and a clinician can check each instance in seconds against the
+  quoted entry.
+
+**Fail-closed.**
+- (G2) The probability that an unchecked answer is presented as checked is
+  zero: any supervisor failure yields `UNVERIFIED` (invariant I2).
+- (G3) Every grounded critical/major finding reaches the clinician
+  (invariant I4), and no finding is silently dropped (invariant I7).
+
+**Latency.** With the scan concurrent with A, wall-clock time is
+
+  T = T_sweep + max(T_A, T_scan) + T_audit,
+
+against T_A + T_verify for a post-hoc verifier. The extra cost over the
+verifier baseline is T_sweep + max(0, T_scan − T_A) + (T_audit − T_verify).
+It is reported per arm by `score.py`.
+
+**Privacy.**
+- (P1) For every identifier registered in the session (structured fields,
+  pattern and cue detections, local-sweep additions), exposure to a remote
+  destination is zero by construction. Every remote-bound payload is
+  re-de-identified at two layers, and any failure refuses the call.
+- Residual risk is confined to identifiers that are unregistered *and*
+  missed by both the rules and the local sweep, plus quasi-identifiers. The
+  leak probe measures this in every study run.
+- After `destroy()`, any token or fingerprint that outlived the request is
+  unresolvable and unlinkable (the keys no longer exist).
+
+## 8. What is deliberately not claimed
 
 * The supervisor does not make answers correct. It surfaces evidence-cited
   concerns for a clinician.

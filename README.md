@@ -49,7 +49,9 @@ flowchart LR
 
 | | |
 |---|---|
-| [docs/REVIEWER_RESPONSE.md](docs/REVIEWER_RESPONSE.md) | Each reviewer requirement, where it is met, and its status |
+| [paper/MANUSCRIPT.md](paper/MANUSCRIPT.md) | Revised manuscript (model-study results pending) |
+| [paper/RESPONSE_LETTER.md](paper/RESPONSE_LETTER.md) | Point-by-point response to the reviewer |
+| [docs/REVIEWER_RESPONSE.md](docs/REVIEWER_RESPONSE.md) | Every reviewer requirement quoted, where it is met, and its status |
 | [docs/METHODS.md](docs/METHODS.md) | Formal control logic, disagreement policy, evidence retrieval, failure taxonomy |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | Privacy design, guarantees and limitations |
 | [docs/RELATED_WORK.md](docs/RELATED_WORK.md) | Comparison with verifier, guardrail, debate, AI-control and CDS approaches; 42 references |
@@ -81,10 +83,11 @@ cp .env.example .env
 dual-lobe-clinical --question "What ibuprofen dose for his knee OA?" \
                    --record patient.json --show-meta
 
-pytest -q                                   # 90 tests
+pytest -q                                   # 92 tests
 python evaluation/privacy_audit.py          # deterministic privacy audit
 python evaluation/run_study.py --repeats 3  # model study (needs models)
 python evaluation/score.py results/study_<stamp>.jsonl --export-adjudication results/adjudication
+python evaluation/adjudication.py results/adjudication/adjudication_key.json rater1.csv rater2.csv
 ```
 
 The record can be JSON of any shape, or a plain-text note.

@@ -1,56 +1,85 @@
-# Response to the reviewer: requirement-by-requirement
+# Reviewer requirements: complete checklist
 
-Each item below is taken directly from the review. For each one: what was
-asked, where it is met, and its status. **Done** means implemented and
-verified by tests or by a reproducible artefact in this repository.
-**Ready to run** means the complete apparatus exists but needs the author's
-models or clinicians.
+The review is split below into every distinct requirement it states or
+implies, each quoted exactly. For each one: where it is met, the evidence,
+and its status.
 
-## What the reviewer valued (preserved and made concrete)
+* **Done**: implemented and verified by tests or a reproducible artefact in
+  this repository.
+* **Ready to run**: the complete apparatus exists and is tested, but it needs
+  the author's models or clinicians. No results are claimed for these.
 
-| # | Reviewer's point | How it is realised |
-|---|---|---|
-| V1 | "a clinician may omit an important question, so a safety layer should examine patient context proactively rather than merely verify the literal answer" | B's **context scan** reads the whole record *before* seeing A's answer and is explicitly mandated to find what was not asked (`prompts.B_CONTEXT_SCAN`). A same-model **answer-verifier arm** exists specifically to test whether this beats literal answer verification. |
-| V2 | "separation between generative execution and independent supervisory oversight" | A (generator, possibly remote) and B (supervisor, local) share no context before the audit, may use different models, and B cannot edit A's answer. |
-| V3 | "independent oversight pathway connected to medical knowledge and patient context" | B receives numbered patient facts and deterministically retrieved knowledge snippets, and must cite both. Citations are machine-checked (`docs/METHODS.md` §5). |
+The revised manuscript is [`paper/MANUSCRIPT.md`](../paper/MANUSCRIPT.md). The
+formal reply is [`paper/RESPONSE_LETTER.md`](../paper/RESPONSE_LETTER.md).
 
-## What the reviewer said was missing
+## A. Strengths the reviewer identified (kept and strengthened)
 
-| # | Requirement (reviewer's words) | Where it is met | Status |
+| # | Reviewer | Realisation | Status |
 |---|---|---|---|
-| R1 | "formal control logic" | `docs/METHODS.md` §2–3: information-flow table, execution order, grounding predicate, verdict rules, 7-rule release gate. Code: `control.py` (no model calls). Tests: `test_clinical_control.py` (one per rule) and `test_gate_exhaustive.py` (all 50,568 input configurations). | **Done** |
-| R2 | "evidence retrieval mechanism" | Patient evidence: the record is flattened into numbered facts with stable paths; every finding must cite them with a verbatim quote. Medical knowledge: deterministic retrieval from an institutional corpus before the call; B may cite only retrieved `[K#]` IDs (`knowledge.py`, METHODS §5). | **Done** (a corpus is supplied by the deploying institution) |
-| R3 | "disagreement policy" | METHODS §4: no override by either lobe; evidence-gated interruption; findings shown before the answer with the source record entry; failure is visible; independence before comparison; optional early resolution via live B. | **Done** |
-| R4 | "failure taxonomy" | METHODS §6.1 (four primary-lobe failure kinds with severities, used as the output schema in `models.py`) and §6.2 (twelve system failure modes, each with its control and code location). | **Done** |
-| R5 | "implementation" | `src/dual_lobe_clinical/` on the generic runtime in `src/dual_lobe_crewai/`; CLI `dual-lobe-clinical`; 90 automated tests in CI. | **Done** |
-| R6 | "comparison with existing verifier and supervisory approaches" | `docs/RELATED_WORK.md`: comparison table over self-correction, CoVe, trained verifiers, LLM-as-judge, guardrails, debate, clinical multi-agent, AI-control trusted monitoring, rule-based CDS. Also an **executable** comparison: the `answer_verifier` arm. | **Done** |
-| R7 | "lack of any references" | 42 references in `docs/RELATED_WORK.md`, covering verification, guardrails, multi-agent, clinical LLMs, CDS / alert fatigue / automation bias, de-identification, cryptography and statistics. | **Done** (verify formatting against the venue) |
-| R8 | evidence that the supervisory lobe "improves safety" | Analytical: invariants I1–I7 proven exhaustively. Empirical: `evaluation/run_study.py` with paired arms, McNemar and Wilson statistics, and blinded clinician adjudication (`docs/EVALUATION.md`). | Analytical **done**; model study **ready to run** |
-| R9 | "detects omitted contraindications reliably" | 21 omission cases in 12 clinical domains, with gold fact paths; sensitivity per arm; the `answer_verifier` comparison isolates context conditioning. | **Ready to run** (needs models, then clinician validation of labels) |
-| R10 | "avoids creating new false alarms" | Design: only grounded critical/major findings can interrupt; ungrounded ones are proven never to interrupt (I5). Measurement: 8 negative controls with distractors; false-hold rate per arm. | Design **done and proven**; rate **ready to run** |
-| R11 | "avoids … automation risks" | B never edits A (tested); every hold shows the source record entry; holds and `UNVERIFIED` require acknowledgement; a failed check never shows as passed (I2, tested); `GREEN` defined narrowly; anti-sycophancy in B's persona. METHODS §6.2. | **Done** (effect on clinician behaviour is future work: a user study) |
-| R12 | "expert evidence" | Blinded clinician adjudication sheet plus a separate key (`score.py --export-adjudication`); gold-label validation step (`docs/EVALUATION.md`). | **Ready to run** (needs clinicians) |
+| A1 | "identifies a legitimate clinical AI safety problem" | Problem stated formally as omission (METHODS §1; manuscript §1) | Done |
+| A2 | "separation between generative execution and independent supervisory oversight" | A and B share no context before the audit; B is local, may be a different model, and cannot edit A's answer | Done |
+| A3 | "a clinician may omit an important question, so a safety layer should examine patient context proactively rather than merely verify the literal answer requested" | B's context scan reads the whole record before seeing the answer (`prompts.B_CONTEXT_SCAN`). A same-model `answer_verifier` arm tests exactly "proactive context" vs "literal answer" | Done (design); ready to run (measurement) |
+| A4 | "graphical architecture … independent oversight pathway connected to medical knowledge and patient context" | Architecture figure (README, mermaid; manuscript Fig. 1). B is connected to numbered patient facts and to deterministically retrieved knowledge `[K#]` | Done |
 
-## Beyond what was asked
+## B. "never develops that intuition into a sufficiently specified computational framework"
 
-| # | Addition | Why it strengthens the work |
+| # | Reviewer | Where met | Evidence | Status |
+|---|---|---|---|---|
+| B1 | "no formal control logic" | METHODS §2–3; manuscript §4 (grounding predicate, effective-verdict rules, 7-rule gate, execution order) | `control.py` is deterministic with no model calls; one test per rule (`test_clinical_control.py`); all 50,568 input configurations verified against 7 invariants (`test_gate_exhaustive.py`) | **Done** |
+| B2 | "[no] evidence retrieval mechanism" | METHODS §5; manuscript §5 | Numbered record facts with stable paths; verbatim-quote verification; deterministic pre-call knowledge retrieval; only retrieved `[K#]` citable (`knowledge.py`, `control.ground_finding`, tests) | **Done** |
+| B3 | "[no] disagreement policy" | METHODS §4; manuscript §4 | Six-point policy: no override by either lobe; evidence-gated interruption; findings shown first with their source; visible failure; independence before comparison; optional early resolution. Enforced by the gate and tested (B never alters A's answer; ungrounded objections cannot interrupt) | **Done** |
+| B4 | "[no] failure taxonomy" | METHODS §6; manuscript §7 | 4 primary-lobe failure kinds × 3 severities, used as the machine-checked output schema (`models.py`); 12 system failure modes, each with its control and code location | **Done** |
+| B5 | "[no] implementation" | `src/dual_lobe_clinical/` on `src/dual_lobe_crewai/`; CLI `dual-lobe-clinical` | 92 automated tests in CI; the provider boundary is exercised end to end | **Done** |
+| B6 | "[no] comparison with existing verifier and supervisory approaches" | RELATED_WORK comparison table (9 approach families); manuscript Table 1 | Also an executable comparison: `answer_verifier` arm with the same model, record and schema | **Done** |
+
+## C. "The lack of any references also prevents assessment of whether the proposed architecture contributes something distinct"
+
+| # | Reviewer | Where met | Status |
+|---|---|---|---|
+| C1 | references | 42 references in the manuscript and RELATED_WORK, all cited in the text: verification, guardrails, multi-agent, AI control, clinical LLMs, CDS / alert fatigue / automation bias, de-identification, cryptography, statistics | **Done** (check formatting against the venue) |
+| C2 | "contributes something distinct" | Four explicit distinctness claims (RELATED_WORK "What is claimed to be distinct"; manuscript §1), each tied to a test or measurement | **Done** (claims); ready to run (empirical support for claim 1) |
+
+## D. "no empirical, simulated, analytical, or expert evidence showing …"
+
+| # | Reviewer | Evidence type | Where | Status |
+|---|---|---|---|---|
+| D1 | "… that the supervisory lobe improves safety" | Analytical | METHODS §7 detection decomposition P(surfaced) = P(¬M) + P(M)·P(D\|M); gate invariants I1–I7 exhaustively verified | **Done** |
+| | | Empirical | Paired 3-arm study (`run_study.py`), McNemar and Wilson statistics (`score.py`) | **Ready to run** |
+| D2 | "… detects omitted contraindications reliably" | Empirical | 21 omission cases in 12 clinical domains with gold fact paths; sensitivity per arm and per case; **repeat consistency** across runs (reliability) | **Ready to run** |
+| D3 | "… or avoids creating new false alarms" | Analytical | Every hold requires a grounded finding, so ungrounded output adds zero holds (I5), and every false hold points to a real, quoted record entry (METHODS §7) | **Done** |
+| | | Empirical | 8 negative controls with distractors; false-hold rate per arm | **Ready to run** |
+| D4 | "… and automation risks" | Design + tests | B never edits A (tested); source entry shown for every interruption; holds and UNVERIFIED need acknowledgement; a failed check can never pass (I2, proven); narrow GREEN; anti-sycophancy | **Done** (clinician-behaviour user study: future work, stated) |
+| D5 | "expert evidence" | Expert | Blinded adjudication sheet with a separate key (`score.py --export-adjudication`); **κ, consensus, tie-break and adjudicated per-arm rates** (`adjudication.py`); gold-label validation step | **Ready to run** (needs clinicians) |
+| D6 | "simulated evidence" | Integration | Scripted models at the provider boundary exercise every path (hold, advisory, fail-closed, blocked, fabricated evidence, remote B refused) | **Done** |
+
+## E. "the present manuscript contains the motivating concept rather than the scientific development"
+
+| # | Where met | Status |
 |---|---|---|
-| X1 | **Patient-identity privacy membrane**: random per-request tokens, AES-256-GCM vault, HMAC lookup with no plaintext index, relative dates, 90+ ages, key destruction after every request (crypto-shredding), privacy receipt. | Addresses the main adoption barrier for clinical AI (trust with patient data) and makes a remote A model usable. `docs/PRIVACY.md`. |
-| X2 | **Local-B requirement, enforced by destination.** B cannot fail over to a remote provider; the proxy refuses to run otherwise. | Turns the two-lobe split into a privacy boundary, a second justification for the architecture. |
-| X3 | **Local B as residual de-identifier.** B finds identifiers without structural cues before any text leaves. | Something neither rules nor a remote model can do safely; measured in the audit. |
-| X4 | **Two-layer egress monitor** (runtime prompt and every CrewAI message, including tool results) that fails closed. | "Monitor all through the process", verified at the provider boundary in tests. |
-| X5 | **Leak probe in every study run.** | Privacy is measured in the real experiment, not only assumed. |
-| X6 | **Anchoring-free pre-answer scan run concurrently with A.** | Independence at no latency cost. |
-| X7 | **Fabricated-evidence detection for the supervisor itself.** | The supervisor is held to the same anti-deception standard as the generator. |
+| E1 | Revised manuscript `paper/MANUSCRIPT.md`: formal specification, related work, privacy, taxonomy, analytical properties, evaluation design, results so far, limitations, and a pending-results table to fill | **Done** (model results pending) |
 
-## What the author still needs to do
+## F. Beyond what was asked
 
-1. Configure a local B (for example `ollama/llama3.1:8b`, or a medically
-   tuned local model) and an A model, then run
-   `evaluation/run_study.py --repeats 3`.
-2. Have one or two clinicians validate the gold labels, then adjudicate the
-   blinded sheet.
-3. Report the results as measured, including false holds and `UNVERIFIED`
-   rates, with the models named.
-4. Optional, for the privacy claim: measure de-identification recall on the
-   i2b2/UTHealth 2014 corpus (it requires a data-use agreement).
+| # | Addition | Why it matters |
+|---|---|---|
+| F1 | Identity-blind inference: random per-request tokens, AES-256-GCM vault, HMAC index with no plaintext copy, relative dates, 90+ ages, crypto-shredding after every request, privacy receipt | Answers the main trust barrier to clinical AI and makes a strong remote A usable |
+| F2 | Local B enforced by destination, with no failover to A's provider | Makes the two-lobe split a privacy boundary |
+| F3 | Local B as residual de-identifier | Catches uncued identifiers that neither rules nor a remote model can safely handle |
+| F4 | Two-layer egress monitor that fails closed | Monitoring "all through the process", tested at the provider boundary |
+| F5 | Leak probe in every study run | Privacy measured in the real experiment |
+| F6 | Anchoring-free pre-answer scan run concurrently with A | Independence at no latency cost (METHODS §7) |
+| F7 | Supervisor held to anti-deception: fabricated citations or quotes disqualify its objections | The overseer is itself audited |
+| F8 | Deterministic privacy audit: 115 identifiers, 0 deterministic leaks, 97/97 clinical values preserved | Empirical privacy evidence already produced |
+
+## G. What only the author can complete
+
+1. Run the study with a local B and an A model:
+   `python evaluation/run_study.py --repeats 3`, then
+   `python evaluation/score.py …`. This completes D1, D2 and D3 empirically.
+2. Have one or two clinicians validate the gold labels, then independently
+   fill the blinded sheet and run `python evaluation/adjudication.py …`.
+   This completes D5.
+3. Paste the numbers into manuscript Table 4 and the abstract, as measured,
+   including unfavourable ones.
+4. Optionally, measure de-identification recall on the i2b2/UTHealth 2014
+   corpus (requires a data-use agreement).

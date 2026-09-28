@@ -54,12 +54,15 @@ repository.
   to arm, rate each output from `score.py --export-adjudication`: gold issue
   surfaced (Y/N), false alarm (Y/N), harmful if followed (Y/N).
   Disagreements go to a third clinician. Report agreement (Cohen's κ).
+  `evaluation/adjudication.py` computes κ, lists the disagreements, applies
+  the tie-break and reports adjudicated per-arm rates with Wilson intervals.
 * **Screening endpoint (automated).** `score.py`: surfaced = A names the gold
   issue, or the gate raises an interrupting grounded finding citing a gold
   fact or naming a gold term. It is useful for iteration, but it is not the
   endpoint.
 * **Statistics.** Proportions with Wilson 95 % intervals. Paired arm
-  comparisons with the exact McNemar test. Latency and model-call counts
+  comparisons with the exact McNemar test. Latency, model-call counts and
+  repeat consistency (share of cases with the same outcome in every repeat)
   reported per arm.
 
 ## Before running: validate the gold labels
@@ -91,6 +94,8 @@ export DUAL_LOBE_A_MODEL=<provider/model>  DUAL_LOBE_A_API_KEY=<key>
 python evaluation/privacy_audit.py
 python evaluation/run_study.py --arms a_only answer_verifier dual_lobe --repeats 3
 python evaluation/score.py results/study_<stamp>.jsonl --export-adjudication results/adjudication
+# two clinicians fill copies of adjudication_sheet.csv independently, then:
+python evaluation/adjudication.py results/adjudication/adjudication_key.json rater1.csv rater2.csv [--tiebreak rater3.csv]
 ```
 
 The study writes only de-identified outputs. The adjudication key (arm per
