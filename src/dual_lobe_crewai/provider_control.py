@@ -72,6 +72,7 @@ class AdaptiveRateController:
         self._requests: dict[str, deque[float]] = defaultdict(deque)
         self._tokens: dict[str, deque[tuple[float, int]]] = defaultdict(deque)
         self._learned: dict[str, LearnedLimit] = defaultdict(LearnedLimit)
+        self._next_request_at: dict[str, float] = defaultdict(float)
         self.safety = float(os.getenv("DUAL_LOBE_RATE_SAFETY", "0.92"))
 
     def _env_free_hint(self, spec: ProviderSpec, kind: str) -> int | None:
@@ -84,10 +85,17 @@ class AdaptiveRateController:
         except ValueError:
             return None
 
+    def _global_limit(self, kind: str) -> int | None:
+        raw = os.getenv(f"DUAL_LOBE_MAX_{kind}", "").strip()
+        try:
+            return int(raw) if raw else None
+        except ValueError:
+            return None
+
     def limits(self, spec: ProviderSpec) -> tuple[int | None, int | None]:
         learned = self._learned.get(spec.key, LearnedLimit())
-        rpm = spec.rpm or learned.rpm or self._env_free_hint(spec, "RPM")
-        tpm = spec.tpm or learned.tpm or self._env_free_hint(spec, "TPM")
+        rpm = spec.rpm or learned.rpm or self._env_free_hint(spec, "RPM") or self._global_limit("RPM")
+        tpm = spec.tpm or learned.tpm or self._env_free_hint(spec, "TPM") or self._global_limit("TPM")
         if rpm:
             rpm = max(1, int(rpm * self.safety))
         if tpm:
@@ -108,6 +116,7 @@ class AdaptiveRateController:
         return replace(spec, max_tokens=max(256, min(spec.max_tokens, room)))
 
     async def acquire(self, spec: ProviderSpec, estimated_tokens: int) -> None:
+        """Reserve a request slot and pace calls according to the known max RPM."""
         rpm, tpm = self.limits(spec)
         if not rpm and not tpm:
             return
@@ -122,14 +131,25 @@ class AdaptiveRateController:
                     rq.popleft()
                 while tq and now - tq[0][0] >= 60:
                     tq.popleft()
-                if rpm and len(rq) >= rpm:
-                    wait = max(wait, 60 - (now - rq[0]) + 0.02)
+
+                # RPM sensor/pacer: spread requests evenly across the minute
+                # instead of allowing a burst up to the rolling-window limit.
+                if rpm:
+                    next_allowed = self._next_request_at[key]
+                    if next_allowed > now:
+                        wait = max(wait, next_allowed - now)
+                    if len(rq) >= rpm:
+                        wait = max(wait, 60 - (now - rq[0]) + 0.02)
+
                 used_tokens = sum(x[1] for x in tq)
                 if tpm and used_tokens + estimated_tokens > tpm and tq:
                     wait = max(wait, 60 - (now - tq[0][0]) + 0.02)
+
                 if wait <= 0:
                     rq.append(now)
                     tq.append((now, estimated_tokens))
+                    if rpm:
+                        self._next_request_at[key] = now + (60.0 / rpm)
                     return
             await asyncio.sleep(min(wait, 60.0))
 
