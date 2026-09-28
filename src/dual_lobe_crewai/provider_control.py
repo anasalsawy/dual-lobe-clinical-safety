@@ -5,7 +5,9 @@ import os
 import re
 import threading
 import time
+from html import unescape
 from collections import defaultdict, deque
+from urllib.request import Request, urlopen
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -72,8 +74,12 @@ class AdaptiveRateController:
         self._requests: dict[str, deque[float]] = defaultdict(deque)
         self._tokens: dict[str, deque[tuple[float, int]]] = defaultdict(deque)
         self._learned: dict[str, LearnedLimit] = defaultdict(LearnedLimit)
+        self._discovered: dict[str, LearnedLimit] = defaultdict(LearnedLimit)
+        self._discovery_attempted_at: dict[str, float] = defaultdict(float)
         self._next_request_at: dict[str, float] = defaultdict(float)
         self.safety = float(os.getenv("DUAL_LOBE_RATE_SAFETY", "0.92"))
+        self.discovery_ttl_s = float(os.getenv("DUAL_LOBE_RATE_DISCOVERY_TTL_SECONDS", "21600"))
+        self.discovery_timeout_s = float(os.getenv("DUAL_LOBE_RATE_DISCOVERY_TIMEOUT_SECONDS", "3"))
 
     def _env_free_hint(self, spec: ProviderSpec, kind: str) -> int | None:
         if spec.effective_tier != "free":
@@ -91,6 +97,131 @@ class AdaptiveRateController:
             return int(raw) if raw else None
         except ValueError:
             return None
+
+    def _official_limit_urls(self, spec: ProviderSpec) -> list[str]:
+        provider = spec.provider
+        if provider == "groq":
+            return ["https://console.groq.com/docs/rate-limits"]
+        if provider == "openrouter":
+            return [
+                "https://openrouter.ai/docs/api-reference/limits",
+                "https://openrouter.ai/docs/faq",
+            ]
+        if provider == "cerebras":
+            return [
+                "https://inference-docs.cerebras.ai/support/rate-limits",
+                "https://inference-docs.cerebras.ai/",
+            ]
+        if provider == "deepinfra":
+            return [
+                "https://deepinfra.com/docs/advanced/rate_limits",
+                "https://deepinfra.com/docs",
+            ]
+        return []
+
+    def _fetch_text(self, url: str) -> str:
+        req = Request(
+            url,
+            headers={"User-Agent": "dual-lobe-rate-limit-discovery/1.0"},
+        )
+        with urlopen(req, timeout=self.discovery_timeout_s) as response:
+            raw = response.read(1_000_000).decode("utf-8", errors="ignore")
+        raw = re.sub(r"(?is)<script.*?>.*?</script>", " ", raw)
+        raw = re.sub(r"(?is)<style.*?>.*?</style>", " ", raw)
+        raw = re.sub(r"(?s)<[^>]+>", " ", raw)
+        return re.sub(r"\s+", " ", unescape(raw)).strip()
+
+    @staticmethod
+    def _extract_doc_limit(text: str, kind: str, spec: ProviderSpec) -> int | None:
+        if not text:
+            return None
+        kind = kind.upper()
+        patterns = (
+            [
+                r"requests\s+per\s+minute\s*\(?RPM\)?\D{0,40}(\d[\d,]*)",
+                r"RPM\D{0,40}(\d[\d,]*)",
+                r"(\d[\d,]*)\s+requests\s+per\s+minute",
+            ]
+            if kind == "RPM"
+            else [
+                r"tokens\s+per\s+minute\s*\(?TPM\)?\D{0,40}(\d[\d,]*)",
+                r"TPM\D{0,40}(\d[\d,]*)",
+                r"(\d[\d,]*)\s+tokens\s+per\s+minute",
+            ]
+        )
+
+        model_terms = [
+            x for x in re.split(r"[/_:.-]+", spec.model.lower())
+            if len(x) >= 4 and x not in {"openai", "openrouter", "model"}
+        ]
+        tier_terms = [spec.effective_tier] if spec.effective_tier in {"free", "paid"} else []
+
+        windows = [text]
+        lower = text.lower()
+        for term in model_terms + tier_terms:
+            pos = lower.find(term)
+            if pos >= 0:
+                windows.insert(0, text[max(0, pos - 1000): pos + 2500])
+
+        candidates: list[int] = []
+        for window in windows:
+            for pat in patterns:
+                for match in re.finditer(pat, window, flags=re.I):
+                    try:
+                        value = int(match.group(1).replace(",", ""))
+                    except Exception:
+                        continue
+                    if value > 0:
+                        candidates.append(value)
+            if candidates:
+                break
+
+        if not candidates:
+            return None
+        # Prefer the smallest plausible documented limit near the matching
+        # provider/model/tier text; this is the safer pacing choice.
+        return min(candidates)
+
+    async def ensure_discovered(self, spec: ProviderSpec) -> LearnedLimit:
+        """Refresh rate limits from official provider documentation once per TTL.
+
+        Discovery is best-effort and never uses the provider API key. If official
+        docs cannot be reached or parsed, presets/runtime learning remain active.
+        """
+        if os.getenv("DUAL_LOBE_RATE_WEB_DISCOVERY", "true").lower() not in {"1", "true", "yes", "on"}:
+            return self._discovered[spec.key]
+
+        urls = self._official_limit_urls(spec)
+        if not urls:
+            return self._discovered[spec.key]
+
+        now = time.time()
+        with self._lock:
+            last = self._discovery_attempted_at.get(spec.key, 0.0)
+            if last and now - last < self.discovery_ttl_s:
+                cur = self._discovered[spec.key]
+                return LearnedLimit(cur.rpm, cur.tpm, cur.retry_after_s, cur.learned_at)
+            self._discovery_attempted_at[spec.key] = now
+
+        rpm = tpm = None
+        for url in urls:
+            try:
+                text = await asyncio.to_thread(self._fetch_text, url)
+            except Exception:
+                continue
+            rpm = rpm or self._extract_doc_limit(text, "RPM", spec)
+            tpm = tpm or self._extract_doc_limit(text, "TPM", spec)
+            if rpm and tpm:
+                break
+
+        with self._lock:
+            cur = self._discovered[spec.key]
+            if rpm:
+                cur.rpm = rpm
+            if tpm:
+                cur.tpm = tpm
+            cur.learned_at = now
+            return LearnedLimit(cur.rpm, cur.tpm, cur.retry_after_s, cur.learned_at)
 
     def _auto_provider_limit(self, spec: ProviderSpec, kind: str) -> int | None:
         """Known provider/tier limits that can be inferred before the first call.
@@ -117,12 +248,16 @@ class AdaptiveRateController:
 
     def limit_source(self, spec: ProviderSpec, kind: str) -> str:
         learned = self._learned.get(spec.key, LearnedLimit())
+        discovered = self._discovered.get(spec.key, LearnedLimit())
         explicit = spec.rpm if kind == "RPM" else spec.tpm
         learned_value = learned.rpm if kind == "RPM" else learned.tpm
+        discovered_value = discovered.rpm if kind == "RPM" else discovered.tpm
         if explicit:
             return "explicit"
         if learned_value:
-            return "learned"
+            return "learned_runtime"
+        if discovered_value:
+            return "official_web"
         if self._env_free_hint(spec, kind):
             return "provider_tier_override"
         if self._auto_provider_limit(spec, kind):
@@ -133,9 +268,11 @@ class AdaptiveRateController:
 
     def limits(self, spec: ProviderSpec) -> tuple[int | None, int | None]:
         learned = self._learned.get(spec.key, LearnedLimit())
+        discovered = self._discovered.get(spec.key, LearnedLimit())
         rpm = (
             spec.rpm
             or learned.rpm
+            or discovered.rpm
             or self._env_free_hint(spec, "RPM")
             or self._auto_provider_limit(spec, "RPM")
             or self._global_limit("RPM")
@@ -143,6 +280,7 @@ class AdaptiveRateController:
         tpm = (
             spec.tpm
             or learned.tpm
+            or discovered.tpm
             or self._env_free_hint(spec, "TPM")
             or self._auto_provider_limit(spec, "TPM")
             or self._global_limit("TPM")
