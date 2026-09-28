@@ -70,7 +70,14 @@ def destination_label(spec: ProviderSpec) -> str:
     return f"{where}:{spec.model}"
 
 
+def _on(name: str, default: str) -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def locality_mode() -> str:
+    # Remote clinical B only when testing mode is on AND local-only is explicitly off.
+    if _on("DUAL_LOBE_TESTING_MODE", "false") and not _on("DUAL_LOBE_CLINICAL_B_LOCAL_ONLY", "true"):
+        return "prefer"
     mode = os.getenv("DUAL_LOBE_CLINICAL_B_LOCALITY", "require").strip().lower()
     return mode if mode in {"require", "prefer"} else "require"
 
@@ -85,7 +92,8 @@ def resolve_b_specs(mode: str | None = None) -> tuple[list[ProviderSpec], bool]:
     identifier sweep is skipped and the receipt records the degraded mode.
     """
     mode = mode or locality_mode()
-    specs = resolve_role_specs("B_VERIFY")
+    # DUAL_LOBE_CLINICAL_B_MODEL/_BASE_URL/_API_KEY give the clinical supervisor its own provider pool.
+    specs = resolve_role_specs("B_CLINICAL" if os.getenv("DUAL_LOBE_CLINICAL_B_MODEL") else "B_VERIFY")
     local = [s for s in specs if is_local_spec(s)]
     if mode == "require":
         if not local:

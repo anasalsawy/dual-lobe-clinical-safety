@@ -22,6 +22,12 @@ def _role_defaults(role: str) -> tuple[str, int, str]:
         return os.getenv("DUAL_LOBE_B_VERIFY_MODEL", b_default), int(os.getenv("DUAL_LOBE_B_VERIFY_MAX_TOKENS", "6000")), "B"
     if role == "B_WORKER":
         return os.getenv("DUAL_LOBE_B_WORKER_MODEL", b_default), int(os.getenv("DUAL_LOBE_B_WORKER_MAX_TOKENS", "6000")), "B"
+    if role == "B_CLINICAL":
+        return (
+            os.getenv("DUAL_LOBE_CLINICAL_B_MODEL", b_default),
+            int(os.getenv("DUAL_LOBE_CLINICAL_B_MAX_TOKENS", os.getenv("DUAL_LOBE_B_VERIFY_MAX_TOKENS", "6000"))),
+            "CLINICAL_B",
+        )
     raise ValueError(f"Unknown LLM role: {role}")
 
 
@@ -73,7 +79,7 @@ def resolve_role_specs(role: str) -> list[ProviderSpec]:
             label=str(row.get("label") or f"{role}:fallback:{i}"),
         ))
 
-    if os.getenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "true").lower() in {"1", "true", "yes", "on"}:
+    if role != "B_CLINICAL" and os.getenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "true").lower() in {"1", "true", "yes", "on"}:
         for other in ["A", "A_CHILD", "B_VERIFY"]:
             if other == role or (role == "A_MERGE" and other == "A"):
                 continue

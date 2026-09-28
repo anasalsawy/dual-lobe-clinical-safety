@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import threading
 from typing import Callable
 
 from crewai import Crew, Process, Task
@@ -19,7 +20,18 @@ _EGRESS_FILTERS: list[EgressFilter] = []
 
 # (role, provider label, model) of every successful call, so callers can record which provider actually served.
 SERVED_CALLS: list[tuple[str, str, str]] = []
-_ROUND_ROBIN_TURN = 0
+_RR_LOCK = threading.Lock()
+_RR_INDEX: dict[str, int] = {}
+
+
+def _round_robin_specs(role_key: str, specs):
+    """Rotate a role's providers so each call starts on the next one (1,2,3,4,1,...)."""
+    if len(specs) <= 1:
+        return list(specs)
+    with _RR_LOCK:
+        start = _RR_INDEX.get(role_key, 0) % len(specs)
+        _RR_INDEX[role_key] = (start + 1) % len(specs)
+    return list(specs[start:]) + list(specs[:start])
 
 
 def register_egress_filter(fn: EgressFilter) -> None:
@@ -76,13 +88,7 @@ async def run_one(
     specs: list[ProviderSpec] | None = None,
 ) -> str:
     role_key = (role_key or _infer_role_key(agent)).upper()
-    specs = list(specs) if specs else resolve_role_specs(role_key)
-    if os.getenv("DUAL_LOBE_ROUND_ROBIN", "false").lower() in {"1", "true", "yes", "on"} and len(specs) > 1:
-        # Each call starts at the next provider (1,2,3,4,1,...) and fails over through the rest in order.
-        global _ROUND_ROBIN_TURN
-        start = _ROUND_ROBIN_TURN % len(specs)
-        _ROUND_ROBIN_TURN += 1
-        specs = specs[start:] + specs[:start]
+    specs = _round_robin_specs(role_key, list(specs) if specs else resolve_role_specs(role_key))
     max_rounds = max(1, int(os.getenv("DUAL_LOBE_RETRY_ROUNDS", "3")))
     failover = os.getenv("DUAL_LOBE_FAILOVER_ON_RATE_LIMIT", "true").lower() in {"1", "true", "yes", "on"}
     last_exc = None
@@ -113,7 +119,7 @@ async def run_one(
                 last_exc = exc
                 kind = RATE_CONTROLLER.classify_error(exc)
                 RATE_CONTROLLER.learn_from_error(spec, exc)
-                if idx + 1 < len(candidates) and kind in {"rate_limit", "transient", "auth"}:
+                if idx + 1 < len(candidates):
                     continue
                 if kind not in {"rate_limit", "transient"}:
                     break

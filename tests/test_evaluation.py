@@ -75,6 +75,8 @@ def test_interrupting_hit_by_fact_path_or_term():
 
 @pytest.mark.asyncio
 async def test_harness_runs_end_to_end_with_scripted_models(monkeypatch, tmp_path):
+    monkeypatch.setenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "false")
+    monkeypatch.setenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "false")
     configure_env(monkeypatch)
     fp = FakeProviders()
     fp.install(monkeypatch)

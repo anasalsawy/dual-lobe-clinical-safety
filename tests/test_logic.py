@@ -335,7 +335,8 @@ async def test_direct_single_agent_bypasses_group_router():
     assert result.published == {"solo": "hello"}
 
 
-def test_google_quota_and_overload_errors_are_retried():
+def test_google_quota_and_overload_errors_are_retried(monkeypatch):
+    monkeypatch.setenv("DUAL_LOBE_RATE_SENSOR", "true")
     from dual_lobe_crewai.provider_control import AdaptiveRateController, ProviderSpec
 
     class GoogleError(Exception):
@@ -353,7 +354,7 @@ def test_google_quota_and_overload_errors_are_retried():
 
 
 @pytest.mark.asyncio
-async def test_round_robin_rotates_providers_and_fails_over(monkeypatch):
+async def test_round_robin_rotates_providers_and_moves_on_after_an_error(monkeypatch):
     from dual_lobe_crewai import runner
     from dual_lobe_crewai.provider_control import ProviderSpec
 
@@ -367,8 +368,7 @@ async def test_round_robin_rotates_providers_and_fails_over(monkeypatch):
             raise RuntimeError("503 unavailable")
         return "ok"
 
-    monkeypatch.setenv("DUAL_LOBE_ROUND_ROBIN", "true")
-    monkeypatch.setattr(runner, "_ROUND_ROBIN_TURN", 0)
+    monkeypatch.setattr(runner, "_RR_INDEX", {})
     monkeypatch.setattr(runner, "_single_call", fake_call)
     monkeypatch.setattr(runner, "make_llm", lambda role, spec: spec)
     monkeypatch.setattr(runner, "_set_llm", lambda agent, llm: setattr(runner, "_current_label", llm.label))
@@ -377,3 +377,41 @@ async def test_round_robin_rotates_providers_and_fails_over(monkeypatch):
         await runner.run_one(object(), "d", "e", role_key="A", specs=specs)
     assert [label for _, label, _ in runner.SERVED_CALLS] == ["p1", "p2", "p4", "p4", "p1", "p2"]
     assert tried == ["p1", "p2", "p3", "p4", "p4", "p1", "p2"]
+
+
+def test_rate_sensor_off_by_default_means_no_pacing_or_learning(monkeypatch):
+    from dual_lobe_crewai.provider_control import AdaptiveRateController, ProviderSpec
+
+    monkeypatch.delenv("DUAL_LOBE_RATE_SENSOR", raising=False)
+    rc = AdaptiveRateController()
+    spec = ProviderSpec(model="groq/x", max_tokens=100, rpm=5, tpm=1000)
+    assert rc.limits(spec) == (None, None)
+    assert rc.learn_from_error(spec, RuntimeError("429 please retry in 9s")).retry_after_s is None
+
+
+def test_rate_sensor_off_by_default_means_no_pacing_or_learning(monkeypatch):
+    from dual_lobe_crewai.provider_control import AdaptiveRateController, ProviderSpec
+
+    monkeypatch.delenv("DUAL_LOBE_RATE_SENSOR", raising=False)
+    rc = AdaptiveRateController()
+    spec = ProviderSpec(model="groq/x", max_tokens=100, rpm=5, tpm=1000)
+    assert rc.limits(spec) == (None, None)
+    assert rc.learn_from_error(spec, RuntimeError("429 please retry in 9s")).retry_after_s is None
+
+
+def test_testing_mode_flags_and_clinical_b_provider(monkeypatch):
+    from dual_lobe_clinical.locality import locality_mode, resolve_b_specs
+
+    monkeypatch.delenv("DUAL_LOBE_CLINICAL_B_LOCALITY", raising=False)
+    monkeypatch.setenv("DUAL_LOBE_TESTING_MODE", "true")
+    assert locality_mode() == "require"  # local-only defaults to true
+    monkeypatch.setenv("DUAL_LOBE_CLINICAL_B_LOCAL_ONLY", "false")
+    assert locality_mode() == "prefer"
+    monkeypatch.setenv("DUAL_LOBE_CLINICAL_B_MODEL", "openai/clinical-b")
+    monkeypatch.setenv("DUAL_LOBE_CLINICAL_B_BASE_URL", "https://remote.example/v1")
+    monkeypatch.setenv("DUAL_LOBE_CLINICAL_B_API_KEY", "k")
+    monkeypatch.setenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "true")
+    monkeypatch.delenv("DUAL_LOBE_FALLBACKS", raising=False)
+    specs, _ = resolve_b_specs()
+    assert [(s.model, s.base_url, s.api_key, s.label) for s in specs] == [
+        ("openai/clinical-b", "https://remote.example/v1", "k", "B_CLINICAL:primary")]

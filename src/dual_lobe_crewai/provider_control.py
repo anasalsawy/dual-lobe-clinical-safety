@@ -74,6 +74,11 @@ class AdaptiveRateController:
         self._learned: dict[str, LearnedLimit] = defaultdict(LearnedLimit)
         self.safety = float(os.getenv("DUAL_LOBE_RATE_SAFETY", "0.92"))
 
+    @property
+    def enabled(self) -> bool:
+        """DUAL_LOBE_RATE_SENSOR (default off): when off, no pacing and no limit learning."""
+        return os.getenv("DUAL_LOBE_RATE_SENSOR", "false").lower() in {"1", "true", "yes", "on"}
+
     def _env_free_hint(self, spec: ProviderSpec, kind: str) -> int | None:
         if spec.effective_tier != "free":
             return None
@@ -85,6 +90,8 @@ class AdaptiveRateController:
             return None
 
     def limits(self, spec: ProviderSpec) -> tuple[int | None, int | None]:
+        if not self.enabled:
+            return None, None
         learned = self._learned.get(spec.key, LearnedLimit())
         rpm = spec.rpm or learned.rpm or self._env_free_hint(spec, "RPM")
         tpm = spec.tpm or learned.tpm or self._env_free_hint(spec, "TPM")
@@ -134,6 +141,8 @@ class AdaptiveRateController:
             await asyncio.sleep(min(wait, 60.0))
 
     def learn_from_error(self, spec: ProviderSpec, exc: Exception) -> LearnedLimit:
+        if not self.enabled:
+            return LearnedLimit()
         text = str(exc)
         rpm = tpm = None
         retry_after = None
