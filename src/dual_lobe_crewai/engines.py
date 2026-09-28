@@ -86,9 +86,10 @@ class DualLobeEngine:
         *,
         fallback_text: str,
         role_key: str,
+        specs=None,
     ) -> str:
         try:
-            result = await run_one(agent, description, expected_output, role_key=role_key)
+            result = await run_one(agent, description, expected_output, role_key=role_key, specs=specs)
             if result is None or not str(result).strip():
                 return fallback_text
             return str(result)

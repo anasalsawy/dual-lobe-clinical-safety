@@ -2,11 +2,41 @@ from __future__ import annotations
 
 import asyncio
 import os
+from typing import Callable
 
 from crewai import Crew, Process, Task
 
 from .llm_factory import make_llm, resolve_role_specs
-from .provider_control import RATE_CONTROLLER
+from .provider_control import RATE_CONTROLLER, ProviderSpec
+
+
+class EgressDenied(RuntimeError):
+    """Raised by an egress filter to refuse sending a payload to a destination."""
+
+
+EgressFilter = Callable[[ProviderSpec, str], str]
+_EGRESS_FILTERS: list[EgressFilter] = []
+
+
+def register_egress_filter(fn: EgressFilter) -> None:
+    """Install a filter applied to every prompt before it is sent to a provider.
+
+    A filter receives the destination spec and the outbound text and returns the
+    text to send, or raises EgressDenied. The generic runtime installs none.
+    """
+    if fn not in _EGRESS_FILTERS:
+        _EGRESS_FILTERS.append(fn)
+
+
+def unregister_egress_filter(fn: EgressFilter) -> None:
+    if fn in _EGRESS_FILTERS:
+        _EGRESS_FILTERS.remove(fn)
+
+
+def apply_egress_filters(spec: ProviderSpec, text: str) -> str:
+    for fn in list(_EGRESS_FILTERS):
+        text = fn(spec, text)
+    return text
 
 
 def _infer_role_key(agent) -> str:
@@ -33,9 +63,16 @@ async def _single_call(agent, description: str, expected_output: str) -> str:
     return str(raw if raw is not None else result)
 
 
-async def run_one(agent, description: str, expected_output: str, *, role_key: str | None = None) -> str:
+async def run_one(
+    agent,
+    description: str,
+    expected_output: str,
+    *,
+    role_key: str | None = None,
+    specs: list[ProviderSpec] | None = None,
+) -> str:
     role_key = (role_key or _infer_role_key(agent)).upper()
-    specs = resolve_role_specs(role_key)
+    specs = list(specs) if specs else resolve_role_specs(role_key)
     max_rounds = max(1, int(os.getenv("DUAL_LOBE_RETRY_ROUNDS", "3")))
     failover = os.getenv("DUAL_LOBE_FAILOVER_ON_RATE_LIMIT", "true").lower() in {"1", "true", "yes", "on"}
     last_exc = None
@@ -43,13 +80,21 @@ async def run_one(agent, description: str, expected_output: str, *, role_key: st
     for round_no in range(1, max_rounds + 1):
         candidates = specs if (round_no == 1 or failover) else specs[:1]
         for idx, original_spec in enumerate(candidates):
-            input_est = RATE_CONTROLLER.estimate_input_tokens(description + "\n" + expected_output)
+            try:
+                guarded_description = apply_egress_filters(original_spec, description)
+                guarded_expected = apply_egress_filters(original_spec, expected_output)
+            except EgressDenied as exc:
+                # Never retried against the same destination; another candidate
+                # (e.g. a local one) may still be acceptable.
+                last_exc = exc
+                continue
+            input_est = RATE_CONTROLLER.estimate_input_tokens(guarded_description + "\n" + guarded_expected)
             spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
             estimated_total = input_est + spec.max_tokens
             await RATE_CONTROLLER.acquire(spec, estimated_total)
             _set_llm(agent, make_llm(role_key, spec=spec))
             try:
-                out = await _single_call(agent, description, expected_output)
+                out = await _single_call(agent, guarded_description, guarded_expected)
                 if out is None or not str(out).strip():
                     raise ValueError("Invalid response from LLM call - None or empty.")
                 return str(out)
@@ -62,6 +107,8 @@ async def run_one(agent, description: str, expected_output: str, *, role_key: st
                 if kind not in {"rate_limit", "transient"}:
                     break
 
+        if isinstance(last_exc, EgressDenied):
+            break
         if round_no < max_rounds and last_exc is not None:
             await asyncio.sleep(RATE_CONTROLLER.retry_delay(specs[0], round_no))
 

@@ -32,6 +32,10 @@ class LiveBMonitor:
     poll_seconds: float = field(
         default_factory=lambda: max(0.02, float(os.getenv("DUAL_LOBE_B_LIVE_POLL_SECONDS", "0.08")))
     )
+    # Optional domain instructions appended to every live observation, and an
+    # explicit provider list for B (e.g. local-only models in clinical mode).
+    context_block: str = ""
+    b_specs: list | None = None
 
     calls: int = 0
     _cursor: int = 0
@@ -122,7 +126,7 @@ NEW EXECUTION EVENTS FROM A / ITS DELEGATED CHILDREN:
 {rendered}
 
 {ADVERSARIAL_PROTOCOL}
-
+{self.context_block}
 Your live job is adversarial, not supportive.
 
 The user's emotional stance toward a direction must exert ZERO epistemic pressure on you.
@@ -170,6 +174,7 @@ Return ONLY JSON:
                 prompt,
                 "Strict JSON live adversarial observation.",
                 role_key="B_VERIFY",
+                specs=self.b_specs,
             )
             data = extract_json_object(raw) or {}
         except Exception as exc:
