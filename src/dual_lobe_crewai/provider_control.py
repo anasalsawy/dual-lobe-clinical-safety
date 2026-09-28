@@ -173,7 +173,8 @@ class AdaptiveRateController:
             m = re.search(pat, text, flags=re.I | re.S)
             if m:
                 rpm = rpm or int(m.group(1)); break
-        m = re.search(r"retry(?:-| )after\D{0,20}([0-9.]+)", text, flags=re.I)
+        m = re.search(r"retry(?:-| )after\D{0,20}([0-9.]+)", text, flags=re.I) or re.search(
+            r"(?:retry in|retryDelay\W{0,4})\s*([0-9.]+)\s*s", text, flags=re.I)  # Google
         if m:
             retry_after = retry_after or float(m.group(1))
 
@@ -188,10 +189,10 @@ class AdaptiveRateController:
     @staticmethod
     def classify_error(exc: Exception) -> str:
         s = str(exc).lower()
-        status = getattr(exc, "status_code", None)
-        if status in {429, 413} or any(x in s for x in ["rate_limit", "rate limit", "tokens per minute", "requests per minute", "tpm", "rpm"]):
+        status = getattr(exc, "status_code", None) or getattr(exc, "code", None)  # google-genai uses .code
+        if status in {429, 413} or any(x in s for x in ["rate_limit", "rate limit", "tokens per minute", "requests per minute", "tpm", "rpm", "resource_exhausted"]):
             return "rate_limit"
-        if status in {500, 502, 503, 504} or any(x in s for x in ["temporarily overloaded", "timeout", "timed out", "connection reset", "service unavailable"]):
+        if status in {500, 502, 503, 504} or any(x in s for x in ["temporarily overloaded", "timeout", "timed out", "connection reset", "service unavailable", "unavailable", "internal error"]):
             return "transient"
         if status in {401, 403} or "unauthorized" in s or "invalid api key" in s:
             return "auth"

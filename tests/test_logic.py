@@ -333,3 +333,20 @@ async def test_direct_single_agent_bypasses_group_router():
     assert called["router"] == 0
     assert called["task"] == "hi"
     assert result.published == {"solo": "hello"}
+
+
+def test_google_quota_and_overload_errors_are_retried():
+    from dual_lobe_crewai.provider_control import AdaptiveRateController, ProviderSpec
+
+    class GoogleError(Exception):
+        def __init__(self, code, msg):
+            super().__init__(f"{code} {msg}")
+            self.code = code
+
+    rc = AdaptiveRateController()
+    quota = GoogleError(429, "RESOURCE_EXHAUSTED. Quota exceeded for metric: free_tier_requests. Please retry in 49.2s.")
+    assert rc.classify_error(quota) == "rate_limit"
+    assert rc.classify_error(GoogleError(503, "UNAVAILABLE. This model is currently experiencing high demand.")) == "transient"
+    assert rc.classify_error(GoogleError(500, "INTERNAL. Internal error encountered.")) == "transient"
+    spec = ProviderSpec(model="gemini/x", max_tokens=100)
+    assert rc.learn_from_error(spec, quota).retry_after_s == 49.2
