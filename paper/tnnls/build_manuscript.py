@@ -24,9 +24,8 @@ M = "http://schemas.openxmlformats.org/officeDocument/2006/math"
 NS = f'xmlns:w="{W}" xmlns:m="{M}"'
 
 AUTHOR = "Anas Alsawy"
-TITLE = ("Pioneering Autonomous Intelligence in AI Systems: Surmounting the Open Sesame "
-         "Barrier in Healthcare Applications Utilizing Large Language Models")
-RUNNING_HEAD = "ALSAWY: SURMOUNTING THE OPEN SESAME BARRIER IN HEALTHCARE LLMs"
+TITLE = "Surmounting the Open Sesame Barrier in Healthcare Applications"
+RUNNING_HEAD = "ALSAWY: SURMOUNTING THE OPEN SESAME BARRIER IN HEALTHCARE APPLICATIONS"
 
 
 # --------------------------------------------------------------------------
