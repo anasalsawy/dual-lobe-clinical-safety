@@ -350,3 +350,30 @@ def test_google_quota_and_overload_errors_are_retried():
     assert rc.classify_error(GoogleError(500, "INTERNAL. Internal error encountered.")) == "transient"
     spec = ProviderSpec(model="gemini/x", max_tokens=100)
     assert rc.learn_from_error(spec, quota).retry_after_s == 49.2
+
+
+@pytest.mark.asyncio
+async def test_round_robin_rotates_providers_and_fails_over(monkeypatch):
+    from dual_lobe_crewai import runner
+    from dual_lobe_crewai.provider_control import ProviderSpec
+
+    specs = [ProviderSpec(model=f"m{i}", max_tokens=100, label=f"p{i}") for i in (1, 2, 3, 4)]
+    tried = []
+
+    async def fake_call(agent, description, expected):
+        label = runner._current_label
+        tried.append(label)
+        if label == "p3":
+            raise RuntimeError("503 unavailable")
+        return "ok"
+
+    monkeypatch.setenv("DUAL_LOBE_ROUND_ROBIN", "true")
+    monkeypatch.setattr(runner, "_ROUND_ROBIN_TURN", 0)
+    monkeypatch.setattr(runner, "_single_call", fake_call)
+    monkeypatch.setattr(runner, "make_llm", lambda role, spec: spec)
+    monkeypatch.setattr(runner, "_set_llm", lambda agent, llm: setattr(runner, "_current_label", llm.label))
+    runner.SERVED_CALLS.clear()
+    for _ in range(6):
+        await runner.run_one(object(), "d", "e", role_key="A", specs=specs)
+    assert [label for _, label, _ in runner.SERVED_CALLS] == ["p1", "p2", "p4", "p4", "p1", "p2"]
+    assert tried == ["p1", "p2", "p3", "p4", "p4", "p1", "p2"]
