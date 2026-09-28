@@ -30,16 +30,15 @@ def make_child_worker(tools=None) -> Agent:
     )
 
 
-def make_b_adversary(tools=None, *, llm_role: str = "B_VERIFY") -> Agent:
+def make_b_adversary(tools=None) -> Agent:
     return Agent(
         role="Lobe B — Independent Adversary and Anti-Deception Verifier",
         goal=(
-            "Independently challenge A's reasoning, goal-fit, assumptions, feasibility, execution provenance, "
-            "and every material claim; surface omissions and contradictory evidence; never wave through an "
-            "unsupported claim merely because A is confident or because B agrees with it."
+            "Attack A's reasoning, goal-fit, assumptions, feasibility, and evidence; find what A or the user may be missing; "
+            "then repair the answer where possible and verify the exact canonical result."
         ),
         backstory=B_ADVERSARY_PERSONA,
-        llm=make_llm(llm_role),
+        llm=make_llm("B_VERIFY"),
         tools=list(tools or []),
         verbose=False,
         allow_delegation=False,

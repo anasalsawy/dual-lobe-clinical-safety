@@ -3,15 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "dual-lobe-clinical-safety"
+name = "dual-lobe-crewai"
 version = "0.2.0"
-description = "Research implementation of independent dual-lobe supervision for clinical AI safety."
+description = "Dual-Lobe: self-splitting reasoning, verification, persistent memory, and group-aware orchestration."
 requires-python = ">=3.10"
 dependencies = [
   "crewai>=0.80.0",
   "pydantic>=2.0",
-  "python-dotenv>=1.0",
-  "cryptography>=43.0"
+  "python-dotenv>=1.0"
 ]
 
 [project.optional-dependencies]
@@ -19,7 +18,6 @@ test = ["pytest>=8", "pytest-asyncio>=0.23"]
 
 [project.scripts]
 dual-lobe = "dual_lobe_crewai.main:main"
-dual-lobe-clinical = "dual_lobe_clinical.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/dual_lobe_crewai", "src/dual_lobe_clinical"]
+packages = ["src/dual_lobe_crewai"]
