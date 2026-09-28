@@ -19,6 +19,7 @@ _EGRESS_FILTERS: list[EgressFilter] = []
 
 # (role, provider label, model) of every successful call, so callers can record which provider actually served.
 SERVED_CALLS: list[tuple[str, str, str]] = []
+_ROUND_ROBIN_TURN = 0
 
 
 def register_egress_filter(fn: EgressFilter) -> None:
@@ -76,6 +77,12 @@ async def run_one(
 ) -> str:
     role_key = (role_key or _infer_role_key(agent)).upper()
     specs = list(specs) if specs else resolve_role_specs(role_key)
+    if os.getenv("DUAL_LOBE_ROUND_ROBIN", "false").lower() in {"1", "true", "yes", "on"} and len(specs) > 1:
+        # Each call starts at the next provider (1,2,3,4,1,...) and fails over through the rest in order.
+        global _ROUND_ROBIN_TURN
+        start = _ROUND_ROBIN_TURN % len(specs)
+        _ROUND_ROBIN_TURN += 1
+        specs = specs[start:] + specs[:start]
     max_rounds = max(1, int(os.getenv("DUAL_LOBE_RETRY_ROUNDS", "3")))
     failover = os.getenv("DUAL_LOBE_FAILOVER_ON_RATE_LIMIT", "true").lower() in {"1", "true", "yes", "on"}
     last_exc = None
