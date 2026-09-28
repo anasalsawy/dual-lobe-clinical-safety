@@ -92,10 +92,61 @@ class AdaptiveRateController:
         except ValueError:
             return None
 
+    def _auto_provider_limit(self, spec: ProviderSpec, kind: str) -> int | None:
+        """Known provider/tier limits that can be inferred before the first call.
+
+        Keep this intentionally small. Only encode limits that are documented at
+        provider/tier level; model/account-specific limits are learned at runtime
+        instead of guessed.
+        """
+        provider = spec.provider
+        tier = spec.effective_tier
+        model = spec.model.lower()
+
+        if kind == "RPM" and provider == "openrouter" and tier == "free":
+            return 20
+
+        if kind == "RPM" and provider == "groq" and tier == "free":
+            if "orpheus" in model:
+                return 10
+            if "whisper" in model:
+                return 20
+            return 30
+
+        return None
+
+    def limit_source(self, spec: ProviderSpec, kind: str) -> str:
+        learned = self._learned.get(spec.key, LearnedLimit())
+        explicit = spec.rpm if kind == "RPM" else spec.tpm
+        learned_value = learned.rpm if kind == "RPM" else learned.tpm
+        if explicit:
+            return "explicit"
+        if learned_value:
+            return "learned"
+        if self._env_free_hint(spec, kind):
+            return "provider_tier_override"
+        if self._auto_provider_limit(spec, kind):
+            return "provider_tier_auto"
+        if self._global_limit(kind):
+            return "global_fallback"
+        return "unknown"
+
     def limits(self, spec: ProviderSpec) -> tuple[int | None, int | None]:
         learned = self._learned.get(spec.key, LearnedLimit())
-        rpm = spec.rpm or learned.rpm or self._env_free_hint(spec, "RPM") or self._global_limit("RPM")
-        tpm = spec.tpm or learned.tpm or self._env_free_hint(spec, "TPM") or self._global_limit("TPM")
+        rpm = (
+            spec.rpm
+            or learned.rpm
+            or self._env_free_hint(spec, "RPM")
+            or self._auto_provider_limit(spec, "RPM")
+            or self._global_limit("RPM")
+        )
+        tpm = (
+            spec.tpm
+            or learned.tpm
+            or self._env_free_hint(spec, "TPM")
+            or self._auto_provider_limit(spec, "TPM")
+            or self._global_limit("TPM")
+        )
         if rpm:
             rpm = max(1, int(rpm * self.safety))
         if tpm:
@@ -161,10 +212,13 @@ class AdaptiveRateController:
         headers: Any = getattr(response, "headers", {}) if response is not None else {}
         try:
             get = headers.get
-            for k in ("x-ratelimit-limit-requests", "ratelimit-limit-requests"):
-                v = get(k)
-                if v:
-                    rpm = int(float(v)); break
+            # Groq documents x-ratelimit-limit-requests as requests/day, not RPM.
+            # Do not mislearn that header as an RPM limit.
+            if spec.provider != "groq":
+                for k in ("x-ratelimit-limit-requests", "ratelimit-limit-requests"):
+                    v = get(k)
+                    if v:
+                        rpm = int(float(v)); break
             for k in ("x-ratelimit-limit-tokens", "ratelimit-limit-tokens"):
                 v = get(k)
                 if v:
