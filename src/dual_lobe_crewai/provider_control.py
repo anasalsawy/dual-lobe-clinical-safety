@@ -70,6 +70,9 @@ class AdaptiveRateController:
     """
 
     def __init__(self) -> None:
+        self.enabled = os.getenv("DUAL_LOBE_RATE_SENSOR", "false").lower() in {
+            "1", "true", "yes", "on"
+        }
         self._lock = threading.RLock()
         self._requests: dict[str, deque[float]] = defaultdict(deque)
         self._tokens: dict[str, deque[tuple[float, int]]] = defaultdict(deque)
@@ -188,6 +191,8 @@ class AdaptiveRateController:
         Discovery is best-effort and never uses the provider API key. If official
         docs cannot be reached or parsed, presets/runtime learning remain active.
         """
+        if not self.enabled:
+            return LearnedLimit()
         if os.getenv("DUAL_LOBE_RATE_WEB_DISCOVERY", "true").lower() not in {"1", "true", "yes", "on"}:
             return self._discovered[spec.key]
 
@@ -267,6 +272,8 @@ class AdaptiveRateController:
         return "unknown"
 
     def limits(self, spec: ProviderSpec) -> tuple[int | None, int | None]:
+        if not self.enabled:
+            return None, None
         learned = self._learned.get(spec.key, LearnedLimit())
         discovered = self._discovered.get(spec.key, LearnedLimit())
         rpm = (
@@ -343,6 +350,8 @@ class AdaptiveRateController:
             await asyncio.sleep(min(wait, 60.0))
 
     def learn_from_error(self, spec: ProviderSpec, exc: Exception) -> LearnedLimit:
+        if not self.enabled:
+            return LearnedLimit()
         text = str(exc)
         rpm = tpm = None
         retry_after = None
