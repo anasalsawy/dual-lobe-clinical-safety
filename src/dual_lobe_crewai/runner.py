@@ -7,6 +7,7 @@ from crewai import Crew, Process, Task
 
 from .llm_factory import make_llm, resolve_role_specs
 from .provider_control import RATE_CONTROLLER
+from .inference_state import NATIVE_INFERENCE_STATE
 
 
 def _infer_role_key(agent) -> str:
@@ -33,8 +34,16 @@ async def _single_call(agent, description: str, expected_output: str) -> str:
     return str(raw if raw is not None else result)
 
 
-async def run_one(agent, description: str, expected_output: str, *, role_key: str | None = None) -> str:
+async def run_one(
+    agent,
+    description: str,
+    expected_output: str,
+    *,
+    role_key: str | None = None,
+    state_key: str | None = None,
+) -> str:
     role_key = (role_key or _infer_role_key(agent)).upper()
+    state_key = state_key or role_key
     specs = resolve_role_specs(role_key)
     max_rounds = max(1, int(os.getenv("DUAL_LOBE_RETRY_ROUNDS", "3")))
     failover = os.getenv("DUAL_LOBE_FAILOVER_ON_RATE_LIMIT", "true").lower() in {"1", "true", "yes", "on"}
@@ -48,13 +57,26 @@ async def run_one(agent, description: str, expected_output: str, *, role_key: st
             spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
             estimated_total = input_est + spec.max_tokens
             await RATE_CONTROLLER.acquire(spec, estimated_total)
-            _set_llm(agent, make_llm(role_key, spec=spec))
+            native_state = await NATIVE_INFERENCE_STATE.prepare(
+                base_url=spec.base_url,
+                state_key=state_key,
+            )
+            _set_llm(
+                agent,
+                make_llm(
+                    role_key,
+                    spec=spec,
+                    extra_body=native_state.extra_body if native_state else None,
+                ),
+            )
             try:
                 out = await _single_call(agent, description, expected_output)
                 if out is None or not str(out).strip():
                     raise ValueError("Invalid response from LLM call - None or empty.")
+                await NATIVE_INFERENCE_STATE.checkpoint(native_state)
                 return str(out)
             except Exception as exc:
+                NATIVE_INFERENCE_STATE.release(native_state)
                 last_exc = exc
                 kind = RATE_CONTROLLER.classify_error(exc)
                 RATE_CONTROLLER.learn_from_error(spec, exc)
