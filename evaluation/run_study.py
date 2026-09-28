@@ -80,17 +80,30 @@ async def run(args) -> Path:
     prov = provenance(args.cases)
     index_date = date.fromisoformat(suite["index_date"])
     cases = [c for c in suite["cases"] if not args.only or c["id"] in args.only]
-    out = Path(args.out_dir) / f"study_{time.strftime('%Y%m%d_%H%M%S')}.jsonl"
-    out.parent.mkdir(parents=True, exist_ok=True)
+    done: set[tuple] = set()
+    if args.resume:
+        # Append to an interrupted run (e.g. a provider's daily quota ran out),
+        # skipping every case/arm/repeat that already has a row. Rows that
+        # failed with an exception are retried; fail-closed releases are kept.
+        out = Path(args.resume)
+        for line in out.read_text(encoding="utf-8").splitlines():
+            r = json.loads(line)
+            if "error" not in r:
+                done.add((r["case_id"], r["arm"], r["repeat"]))
+    else:
+        out = Path(args.out_dir) / f"study_{time.strftime('%Y%m%d_%H%M%S')}.jsonl"
+        out.parent.mkdir(parents=True, exist_ok=True)
 
     egress.install()  # monitor first, probe second: the probe sees what actually leaves
     probe = LeakProbe()
     register_egress_filter(probe)
     try:
-        with out.open("w", encoding="utf-8") as fh:
+        with out.open("a" if args.resume else "w", encoding="utf-8") as fh:
             for repeat in range(args.repeats):
                 for case in cases:
                     for arm in args.arms:
+                        if (case["id"], arm, repeat) in done:
+                            continue
                         probe.planted, probe.leaks, probe.remote_payloads = list(case.get("phi", [])), [], 0
                         engine = ClinicalDualLobeEngine(**ARMS[arm])
                         t0 = time.perf_counter()
@@ -141,6 +154,7 @@ def main() -> None:
     ap.add_argument("--repeats", type=int, default=1)
     ap.add_argument("--only", nargs="*", default=None, help="Case IDs to run.")
     ap.add_argument("--out-dir", default="results")
+    ap.add_argument("--resume", default=None, help="Existing study JSONL to append to, skipping completed rows.")
     args = ap.parse_args()
     path = asyncio.run(run(args))
     print(f"\nWrote {path}. Score with: python evaluation/score.py {path}")
