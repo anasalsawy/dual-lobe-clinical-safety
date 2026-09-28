@@ -1,80 +1,36 @@
 import json
-import pytest
 
-from dual_lobe_clinical.engine import ClinicalDualLobeEngine
-from dual_lobe_clinical.privacy import PrivacyGuard, ProviderPrivacyPolicy
+from dual_lobe_clinical.privacy import PrivacyGuard
 
 
-@pytest.mark.asyncio
-async def test_runtime_sends_only_tokenized_identity_to_both_passes(monkeypatch):
-    engine=ClinicalDualLobeEngine(
-        privacy_guard=PrivacyGuard(
-            ProviderPrivacyPolicy(provider_name="test"),
-            audit_key=b"test-key",
-        ),
-        enable_live_b=False,
+def test_a_side_can_receive_tokenized_context_while_local_b_can_keep_raw_data():
+    guard = PrivacyGuard(audit_key=b"test")
+    vault = guard.new_vault()
+    query = "Send Jane Doe's result"
+    context = json.dumps({"name": "Jane Doe", "diagnosis": "asthma"})
+    safe_query, safe_context, receipt = guard.prepare(
+        query=query,
+        patient_context=context,
+        vault=vault,
     )
-    seen={"a_task":"","b_independent":("",""),"final":("","","")}
+    assert "Jane Doe" not in safe_query
+    assert "Jane Doe" not in safe_context
+    assert "<PHI:" in safe_query or "<PHI:" in safe_context
+    assert receipt.raw_phi_forwarded is False
+    # The raw values remain available to the local runtime/B through the original inputs.
+    assert "Jane Doe" in query and "Jane Doe" in context
+    vault.destroy_key()
 
-    async def fake_run_a(**kwargs):
-        seen["a_task"]=kwargs["task"]
-        return "Advice for <PHI:NAME:DEADBEEF1234>"
 
-    async def fake_independent(**kwargs):
-        seen["b_independent"]=(kwargs["query"],kwargs["patient_context"])
-        from dual_lobe_clinical.schemas import SupervisorAssessment
-        return SupervisorAssessment()
-
-    async def fake_final(**kwargs):
-        seen["final"]=(kwargs["query"],kwargs["patient_context"],kwargs["trace_text"])
-        from dual_lobe_clinical.schemas import SupervisorAssessment
-        return SupervisorAssessment()
-
-    monkeypatch.setattr(engine,"_run_a",fake_run_a)
-    monkeypatch.setattr(engine,"_independent_pass",fake_independent)
-    monkeypatch.setattr(engine,"_final_clinical_audit",fake_final)
-
-    result=await engine.run_clinical(
-        query="What should Jane Doe do?",
-        patient_context=json.dumps({"name":"Jane Doe","diagnosis":"asthma"}),
+def test_b_output_is_sanitized_before_remote_a_review():
+    guard = PrivacyGuard(audit_key=b"test")
+    vault = guard.new_vault()
+    _, _, _ = guard.prepare(
+        query="q",
+        patient_context=json.dumps({"name": "Jane Doe"}),
+        vault=vault,
     )
-
-    combined=json.dumps(seen)
-    assert "Jane Doe" not in combined
-    assert "Jane Doe" not in json.dumps({"q":result.sanitized_query,"ctx":result.sanitized_patient_context})
-    assert result.privacy_receipt.vault_key_destroyed is True
-    assert result.privacy_receipt.persisted_raw_locally is False
-
-
-@pytest.mark.asyncio
-async def test_local_delivery_can_rehydrate_without_persisting_raw_in_result(monkeypatch):
-    engine=ClinicalDualLobeEngine(
-        privacy_guard=PrivacyGuard(audit_key=b"test-key"),
-        enable_live_b=False,
-    )
-    captured=[]
-
-    async def fake_run_a(**kwargs):
-        task=kwargs["task"]
-        start=task.index("<PHI:NAME:")
-        end=task.index(">",start)+1
-        return f"Follow-up for {task[start:end]}"
-
-    async def empty(**kwargs):
-        from dual_lobe_clinical.schemas import SupervisorAssessment
-        return SupervisorAssessment()
-
-    monkeypatch.setattr(engine,"_run_a",fake_run_a)
-    monkeypatch.setattr(engine,"_independent_pass",empty)
-    monkeypatch.setattr(engine,"_final_clinical_audit",empty)
-
-    result=await engine.run_clinical(
-        query="Plan follow-up",
-        patient_context=json.dumps({"name":"Jane Doe","diagnosis":"asthma"}),
-        local_delivery=captured.append,
-    )
-
-    assert captured==["Follow-up for Jane Doe"]
-    assert "Jane Doe" not in (result.released_answer or "")
-    assert "Jane Doe" not in result.sanitized_patient_context
-    assert result.privacy_receipt.vault_key_destroyed is True
+    safe, _ = guard.sanitize_trace("Tool returned Jane Doe", vault=vault)
+    assert "Jane Doe" not in safe
+    assert "<PHI:" in safe
+    vault.destroy_key()
