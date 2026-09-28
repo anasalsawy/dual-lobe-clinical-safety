@@ -138,9 +138,16 @@ def resolve_role_specs(role: str) -> list[ProviderSpec]:
     return dedup
 
 
-def make_llm(role: str, spec: ProviderSpec | None = None) -> LLM:
+def make_llm(
+    role: str,
+    spec: ProviderSpec | None = None,
+    *,
+    extra_body: dict | None = None,
+) -> LLM:
     spec = spec or primary_spec(role)
     kwargs = {"model": spec.model, "max_tokens": spec.max_tokens}
+    if extra_body:
+        kwargs["extra_body"] = dict(extra_body)
     if spec.api_key:
         kwargs["api_key"] = spec.api_key
     if spec.base_url:
