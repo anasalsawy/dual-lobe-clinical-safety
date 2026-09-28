@@ -1,134 +1,111 @@
-# Dual-Lobe CrewAI
+# Dual-Lobe Clinical Safety
 
-Dual-Lobe is a two-process reasoning runtime built around a persistent primary worker (**A**) and a persistent independent adversary/verifier (**B**).
+A clinical inference proxy built from the generic
+[Dual-Lobe runtime](https://github.com/anasalsawy/dual-lobe-proxy). Clinicians
+often ask a narrow question while the patient's record holds the thing that
+matters. This proxy adds an **independent, local supervisory lobe** that reads
+the whole record, not only what was asked. It also adds a **deterministic
+release gate** and a **privacy membrane**, so the answering model never learns
+who the patient is.
 
-The current architecture deliberately does **not** split the user's task into an A-half and B-half.
+> Research software. Not a medical device and not for patient care.
 
-## Current architecture
+## Architecture
 
-```text
-                         temporary child
-                       ↗
-User task → A ──delegate── temporary child
-             │         ↘
-             │           temporary child
-             │
-             │ execution events
-             ↓
-      B persistent live observer
-        │       │
-        │       └─ intervene during A's run when useful
-        │
-        └─ final adversarial repair + anti-deception verification
-                          ↓
-                   canonical answer
+```mermaid
+flowchart LR
+    Q[Clinician question + patient record] --> P[Privacy membrane<br/>tokens, relative dates, vault]
+    P -->|de-identified view| A[Lobe A: answers<br/>any provider]
+    P -->|de-identified view| B1[Lobe B: context scan<br/>LOCAL, never sees A's answer]
+    P -.->|text about to leave| B0[Lobe B: residual<br/>identifier sweep, LOCAL]
+    K[(Institutional knowledge)] --> B1
+    A --> B2[Lobe B: final audit<br/>LOCAL]
+    B1 --> B2
+    B2 --> G{Deterministic gate<br/>evidence-grounded?}
+    G --> R[RELEASE / ADVISORIES / HOLD / UNVERIFIED / BLOCKED]
+    R --> H[Rehydrate for clinician only<br/>then destroy session keys]
+    E[[Egress monitor on every outbound call]] -.- A
 ```
 
-### A — worker + delegation
+* **Lobe A** answers the clinician's question. It can be a large remote model
+  because it only ever sees de-identified data.
+* **Lobe B** must be a **local** model. It runs:
+  1. a residual identifier sweep over text about to leave;
+  2. an independent context scan, concurrent with A and without seeing A's
+     answer: allergies, interactions, organ function, pregnancy, age,
+     unaddressed abnormal results, red flags, missing information;
+  3. a final audit of A's exact answer. B never rewrites A's answer.
+* **Gate.** Findings must cite record facts (`[F#]`) with verbatim quotes, and
+  every citation is machine-checked. Only grounded critical/major findings can
+  interrupt the clinician. Fabricated evidence can never interrupt. If the
+  supervisor fails, the answer is marked `UNVERIFIED`, never passed.
+* **Privacy.** Per-request random tokens, AES-256-GCM vault, HMAC lookup with
+  no plaintext index, dates as offsets (`T-14d`), ages 90+. A two-layer
+  egress monitor checks every outbound payload by destination. Keys are
+  destroyed after every request (crypto-shredding). A privacy receipt comes
+  with every answer.
 
-A owns execution and the user-facing task.
+## Documents
 
-Delegation is defined as a **compute-acceleration primitive**, not managerial handoff. It means spawning temporary inference workers for independent work so useful tasks happen concurrently and the user waits less.
+| | |
+|---|---|
+| [docs/REVIEWER_RESPONSE.md](docs/REVIEWER_RESPONSE.md) | Each reviewer requirement, where it is met, and its status |
+| [docs/METHODS.md](docs/METHODS.md) | Formal control logic, disagreement policy, evidence retrieval, failure taxonomy |
+| [docs/PRIVACY.md](docs/PRIVACY.md) | Privacy design, guarantees and limitations |
+| [docs/RELATED_WORK.md](docs/RELATED_WORK.md) | Comparison with verifier, guardrail, debate, AI-control and CDS approaches; 42 references |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Hypotheses, study design, evidence so far, how to run |
 
-A is explicitly encouraged to delegate substantial independent work early. Children are temporary compute workers. They are not B.
+## Evidence so far
 
-Default child cap is controlled by `DUAL_LOBE_MAX_CHILDREN` (default 6).
+* **Release gate:** safety invariants verified over all 50,568 enumerated
+  input configurations (`tests/test_gate_exhaustive.py`).
+* **Privacy audit** (29 cases, 115 planted identifiers): 0 deterministic
+  leaks, 1 left for the local sweep by design, 97/97 clinical values
+  preserved, all sessions crypto-shredded (`results/privacy_audit.json`).
+* **End-to-end tests at the provider boundary:** no identifier reaches the
+  remote lobe; all B calls stay local; a remote B is refused.
+* **Model-performance study** (omission sensitivity and false holds versus
+  A-only and versus a conventional answer verifier): harness ready, not yet
+  run. No performance numbers are claimed.
 
-### B — persistent independent adversary
-
-B is not an extra worker lane and is not a polite reviewer.
-
-Its standing job is to challenge A:
-- find hidden assumptions and brittle logic;
-- find reasons a plan/project may fail in practice;
-- test whether the work actually satisfies the user's intent;
-- detect when the user or A may be solving the wrong problem;
-- find missing facts that could change the approach;
-- challenge unnecessary/duplicative work and surface the need to check existing alternatives;
-- detect ignored evidence, repeated failures, task drift, and unjustified certainty;
-- audit A's use of delegation;
-- perform final anti-deception verification.
-
-## Continuous B
-
-B is now **event-driven and continuously present alongside A**, rather than appearing only at the final gate.
-
-While A is executing, B:
-1. forms its own independent task view;
-2. watches meaningful runtime/tool/delegation events;
-3. updates its own persistent state;
-4. emits a live intervention when A can still benefit from changing course;
-5. streams that intervention back into A's tool flow;
-6. still performs a full final adversarial review and verification.
-
-B does not burn inference in a blind busy-loop. It wakes on meaningful events. `DUAL_LOBE_B_LIVE_MAX_CALLS` caps live observations per run (default 6).
-
-## Anti-deception — primary feature
-
-The verifier uses a strict evidence protocol:
-
-- verify against the original user intent;
-- mentally classify material claims as **OBSERVED / INFERRED / ASSUMED / UNKNOWN**;
-- detect unsupported factual claims and fabricated/exaggerated action claims;
-- require positive evidence for files, edits, deployments, tests, external actions, bookings, payments, messages, and artifacts;
-- treat worker text as contributed work, not independent corroboration;
-- actively seek disconfirming evidence instead of only support;
-- bind the verdict to the exact final answer;
-- fail closed: malformed or incomplete verification cannot become GREEN.
-
-**GREEN means only “no deception detected from available evidence.”** It does not mean universal truth.
-
-Unresolved `missing`, `unverified`, or `proof_requests` force at least YELLOW.
-
-## Group chat: B owns conversational routing
-
-When `is_group=true`, B has an additional persistent job: **follow the conversation and decide who is actually addressed by each message.**
-
-```text
-group conversation
-      ↓
-B observes roster + transport metadata + recent conversation + new message
-      ↓
-"who is actually addressed?"
-      ↓
-deterministic runtime validates B's agent IDs
-      ↓
-only addressed A instance(s) run
-```
-
-B distinguishes address from mention, follows conversational continuity, understands role-based addressing, and can return no target. Deterministic code does not pretend to understand the conversation; it only validates IDs and enforces B's floor decision.
-
-If B routing fails, the runtime fails closed against reply storms, except for authoritative transport metadata such as explicit target IDs, reply-to metadata, or an explicit broadcast.
-
-Direct one-agent/private chat bypasses this routing inference.
-
-## Independent memory
-
-A and B use separate persistent JSONL memory lineages by default. B's live observations and adversarial findings therefore accumulate independently from A's task memory.
-
-## Install
+## Quick start
 
 ```bash
 pip install -e .
+cp .env.example .env
+# Lobe B must be local, e.g.:  ollama pull llama3.1:8b
+#   DUAL_LOBE_B_MODEL=ollama/llama3.1:8b
+# Lobe A: any provider
+#   DUAL_LOBE_A_MODEL=...   DUAL_LOBE_A_API_KEY=...
+
+dual-lobe-clinical --question "What ibuprofen dose for his knee OA?" \
+                   --record patient.json --show-meta
+
+pytest -q                                   # 90 tests
+python evaluation/privacy_audit.py          # deterministic privacy audit
+python evaluation/run_study.py --repeats 3  # model study (needs models)
+python evaluation/score.py results/study_<stamp>.jsonl --export-adjudication results/adjudication
 ```
 
-## Run
+The record can be JSON of any shape, or a plain-text note.
 
-```bash
-dual-lobe --task "Diagnose this failure without guessing." --show-meta
+## Repository layout
+
+```
+src/dual_lobe_crewai/    generic Dual-Lobe runtime (A, B, delegation, live B, anti-deception)
+src/dual_lobe_clinical/  clinical layer
+  privacy.py             de-identification session, vault, receipt
+  egress.py              destination-based egress monitor
+  locality.py            local-B enforcement
+  engine.py              clinical orchestration
+  control.py             grounding + release gate (deterministic)
+  knowledge.py           evidence retrieval
+  prompts.py, models.py
+benchmarks/clinical/     29-case omission benchmark with planted identifiers
+evaluation/              privacy audit, study runner, scorer
+docs/                    methods, privacy, related work, evaluation, reviewer response
 ```
 
-Optional repeated cycles:
-
-```bash
-dual-lobe --task "Continue improving this result." --loop-cycles 3 --show-meta
-```
-
-## Core call shape
-
-Without delegation, one task cycle consists of:
-- A primary call;
-- zero or more live B observation calls while A runs;
-- B final adversarial/verification call.
-
-Delegated child calls are additional and intentional parallel compute. The exact logical-call count is surfaced in metadata.
+The generic runtime is kept intact apart from two small hooks: explicit
+provider specs and egress filters in `run_one`, plus domain context and B
+specs for the live monitor. `dual-lobe` still works as before.
