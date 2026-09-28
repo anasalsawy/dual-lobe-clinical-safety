@@ -60,3 +60,58 @@ def test_second_request_is_delayed_by_even_pacing(monkeypatch):
 
     elapsed = asyncio.run(run_two())
     assert elapsed >= 0.008
+
+
+def test_openrouter_free_rpm_is_detected_automatically(monkeypatch):
+    monkeypatch.delenv("DUAL_LOBE_MAX_RPM", raising=False)
+    monkeypatch.setenv("DUAL_LOBE_RATE_SAFETY", "1.0")
+    ctl = AdaptiveRateController()
+    s = ProviderSpec(
+        model="openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        max_tokens=1000,
+        api_key="x",
+        base_url="https://openrouter.ai/api/v1",
+        tier="auto",
+    )
+    rpm, _ = ctl.limits(s)
+    assert rpm == 20
+    assert ctl.limit_source(s, "RPM") == "provider_tier_auto"
+
+
+def test_groq_free_rpm_is_detected_from_provider_and_tier(monkeypatch):
+    monkeypatch.delenv("DUAL_LOBE_MAX_RPM", raising=False)
+    monkeypatch.setenv("DUAL_LOBE_RATE_SAFETY", "1.0")
+    ctl = AdaptiveRateController()
+    s = ProviderSpec(
+        model="groq/openai/gpt-oss-20b",
+        max_tokens=1000,
+        api_key="x",
+        base_url="https://api.groq.com/openai/v1",
+        tier="free",
+    )
+    rpm, _ = ctl.limits(s)
+    assert rpm == 30
+    assert ctl.limit_source(s, "RPM") == "provider_tier_auto"
+
+
+def test_groq_request_limit_header_is_not_misread_as_rpm(monkeypatch):
+    monkeypatch.setenv("DUAL_LOBE_RATE_SAFETY", "1.0")
+    ctl = AdaptiveRateController()
+    s = ProviderSpec(
+        model="groq/openai/gpt-oss-20b",
+        max_tokens=1000,
+        api_key="x",
+        base_url="https://api.groq.com/openai/v1",
+        tier="free",
+    )
+
+    class Response:
+        headers = {"x-ratelimit-limit-requests": "14400"}
+
+    class Error(Exception):
+        response = Response()
+
+    learned = ctl.learn_from_error(s, Error("temporary failure"))
+    assert learned.rpm is None
+    rpm, _ = ctl.limits(s)
+    assert rpm == 30
