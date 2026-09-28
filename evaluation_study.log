@@ -1,0 +1,41 @@
+ERROR:root:Google Gemini API error: 503 - This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+ERROR:root:Google Gemini API error: 503 - This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+ERROR:root:Google Gemini API error: 503 - This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+[CrewAIEventsBus] Warning: Event pairing mismatch. 'llm_call_failed' closed 
+'flow_started' (expected 'llm_call_started')
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: OPENAI_API_KEY is required
+ERROR:root:Google Gemini API error: 503 - This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+[CrewAIEventsBus] Warning: Event pairing mismatch. 'llm_call_failed' closed 
+'flow_started' (expected 'llm_call_started')
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: OPENAI_API_KEY is required
+ERROR:root:Google Gemini API error: 503 - This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+[CrewAIEventsBus] Warning: Event pairing mismatch. 'llm_call_failed' closed 
+'flow_started' (expected 'llm_call_started')
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: OPENAI_API_KEY is required
+H01 a_only r0: UNVERIFIED
+ERROR:root:Google Gemini API error: 503 - This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+ERROR:root:Google Gemini API error: 429 - You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite
+Please retry in 41.574823341s.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite\nPlease retry in 41.574823341s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.5-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '41s'}]}}
+ERROR:root:Google Gemini API error: 429 - You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite
+Please retry in 41.407302937s.
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 15, model: gemini-3.5-flash-lite\nPlease retry in 41.407302937s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.5-flash-lite'}, 'quotaValue': '15'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '41s'}]}}
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+ERROR:root:OpenAI API call failed: OPENAI_API_KEY is required
+[CrewAIEventsBus] Warning: Event pairing mismatch. 'llm_call_failed' closed 
+'flow_started' (expected 'llm_call_started')
+ERROR:crewai.flow.runtime:Error executing listener call_llm_native_tools: OPENAI_API_KEY is required
