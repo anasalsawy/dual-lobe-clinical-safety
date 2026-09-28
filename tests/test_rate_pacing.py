@@ -115,3 +115,70 @@ def test_groq_request_limit_header_is_not_misread_as_rpm(monkeypatch):
     assert learned.rpm is None
     rpm, _ = ctl.limits(s)
     assert rpm == 30
+
+
+def test_official_web_discovery_overrides_preset(monkeypatch):
+    monkeypatch.setenv("DUAL_LOBE_RATE_SAFETY", "1.0")
+    ctl = AdaptiveRateController()
+    s = ProviderSpec(
+        model="openrouter/example:free",
+        max_tokens=1000,
+        api_key="x",
+        base_url="https://openrouter.ai/api/v1",
+        tier="free",
+    )
+
+    monkeypatch.setattr(
+        ctl,
+        "_fetch_text",
+        lambda url: "Free tier limits: 7 requests per minute (RPM) and 10000 tokens per minute (TPM).",
+    )
+    asyncio.run(ctl.ensure_discovered(s))
+    rpm, tpm = ctl.limits(s)
+    assert rpm == 7
+    assert tpm == 10000
+    assert ctl.limit_source(s, "RPM") == "official_web"
+
+
+def test_web_discovery_is_cached(monkeypatch):
+    monkeypatch.setenv("DUAL_LOBE_RATE_SAFETY", "1.0")
+    ctl = AdaptiveRateController()
+    ctl.discovery_ttl_s = 3600
+    s = ProviderSpec(
+        model="openrouter/example:free",
+        max_tokens=1000,
+        api_key="x",
+        base_url="https://openrouter.ai/api/v1",
+        tier="free",
+    )
+    calls = {"n": 0}
+
+    def fake_fetch(url):
+        calls["n"] += 1
+        return "20 requests per minute"
+
+    monkeypatch.setattr(ctl, "_fetch_text", fake_fetch)
+    asyncio.run(ctl.ensure_discovered(s))
+    asyncio.run(ctl.ensure_discovered(s))
+    assert calls["n"] == 1
+
+
+def test_web_discovery_failure_falls_back_to_preset(monkeypatch):
+    monkeypatch.setenv("DUAL_LOBE_RATE_SAFETY", "1.0")
+    ctl = AdaptiveRateController()
+    s = ProviderSpec(
+        model="openrouter/example:free",
+        max_tokens=1000,
+        api_key="x",
+        base_url="https://openrouter.ai/api/v1",
+        tier="free",
+    )
+
+    def boom(url):
+        raise OSError("offline")
+
+    monkeypatch.setattr(ctl, "_fetch_text", boom)
+    asyncio.run(ctl.ensure_discovered(s))
+    rpm, _ = ctl.limits(s)
+    assert rpm == 20
+    assert ctl.limit_source(s, "RPM") == "provider_tier_auto"
