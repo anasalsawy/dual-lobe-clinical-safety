@@ -345,9 +345,10 @@ Do not include a challenge merely to populate a field. Empty lists are correct w
     ) -> RunResult:
         total_start = time.perf_counter()
         timings: dict[str, int | float | str] = {}
-        a_memory = self.memory.auto_slice(task)
-        strategy_memory = self.memory.split_experience_slice(task, limit=3, max_chars=3000)
-        b_memory = self.b_memory.auto_slice(task)
+        rewrite_test, a_task, rewrite_instruction = _parse_b_rewrite_test(task)
+        a_memory = self.memory.auto_slice(a_task)
+        strategy_memory = self.memory.split_experience_slice(a_task, limit=3, max_chars=3000)
+        b_memory = self.b_memory.auto_slice(a_task)
         trace = ProxyToolTrace()
         delegate_state = DelegateRunState()
         live_b_state = LiveBState()
