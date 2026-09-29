@@ -12,17 +12,44 @@ from .inference_state import CONTINUITY_SNAPSHOTS, NATIVE_INFERENCE_STATE
 
 
 _RR_LOCK = threading.Lock()
-_RR_INDEX: dict[str, int] = {}
+_RR_POOL: list[str] = []
+_RR_NEXT = 0
+
+
+def _rr_reset() -> None:
+    global _RR_NEXT
+    with _RR_LOCK:
+        _RR_POOL.clear()
+        _RR_NEXT = 0
+
+
+def _spec_id(spec) -> str:
+    return getattr(spec, "key", None) or spec.label
 
 
 def _round_robin_specs(role_key: str, specs):
-    """Rotate a role's configured providers so each call starts on the next one."""
+    """Rotate one shared provider cycle across all calls (1,2,3,1,2,3...), regardless of role.
+
+    A role that lacks the next provider in the cycle starts on the next one it has.
+    """
+    global _RR_NEXT
+    specs = list(specs)
     if len(specs) <= 1:
-        return list(specs)
+        return specs
+    ids = [_spec_id(s) for s in specs]
     with _RR_LOCK:
-        start = _RR_INDEX.get(role_key, 0) % len(specs)
-        _RR_INDEX[role_key] = (start + 1) % len(specs)
-    return list(specs[start:]) + list(specs[:start])
+        for sid in ids:
+            if sid not in _RR_POOL:
+                _RR_POOL.append(sid)
+        n = len(_RR_POOL)
+        start = 0
+        for step in range(n):
+            target = _RR_POOL[(_RR_NEXT + step) % n]
+            if target in ids:
+                start = ids.index(target)
+                _RR_NEXT = (_RR_NEXT + step + 1) % n
+                break
+    return specs[start:] + specs[:start]
 
 
 def _infer_role_key(agent) -> str:
@@ -78,26 +105,27 @@ async def run_one(
     # errors, immediately try the next provider in the same cyclic order.
     last_exc = None
     for original_spec in specs:
-        await RATE_CONTROLLER.ensure_discovered(original_spec)
-        input_est = RATE_CONTROLLER.estimate_input_tokens(effective_description + "\n" + expected_output)
-        spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
-        estimated_total = input_est + spec.max_tokens
-        await RATE_CONTROLLER.acquire(spec, estimated_total)
-
-        native_state = await NATIVE_INFERENCE_STATE.prepare(
-            base_url=spec.base_url,
-            state_key=state_key,
-        )
-        _set_llm(
-            agent,
-            make_llm(
-                role_key,
-                spec=spec,
-                extra_body=native_state.extra_body if native_state else None,
-            ),
-        )
-
+        spec = original_spec
+        native_state = None
         try:
+            await RATE_CONTROLLER.ensure_discovered(original_spec)
+            input_est = RATE_CONTROLLER.estimate_input_tokens(effective_description + "\n" + expected_output)
+            spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
+            estimated_total = input_est + spec.max_tokens
+            await RATE_CONTROLLER.acquire(spec, estimated_total)
+
+            native_state = await NATIVE_INFERENCE_STATE.prepare(
+                base_url=spec.base_url,
+                state_key=state_key,
+            )
+            _set_llm(
+                agent,
+                make_llm(
+                    role_key,
+                    spec=spec,
+                    extra_body=native_state.extra_body if native_state else None,
+                ),
+            )
             out = await _single_call(agent, effective_description, expected_output)
             if out is None or not str(out).strip():
                 raise ValueError("Invalid response from LLM call - None or empty.")
