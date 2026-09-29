@@ -70,3 +70,74 @@ def test_provider_setup_failure_rotates_to_next(monkeypatch):
 
     out = asyncio.run(runner.run_one(Agent(), "x", "y", role_key="A", persistent_state=False))
     assert out == "good/m"
+
+
+def test_fallback_keeps_its_own_location(monkeypatch):
+    from dual_lobe_crewai.llm_factory import resolve_role_specs
+
+    monkeypatch.setenv("DUAL_LOBE_A_MODEL", "openai/a-model")
+    monkeypatch.setenv("DUAL_LOBE_A_BASE_URL", "https://a-host.example/v1")
+    monkeypatch.setenv("DUAL_LOBE_A_API_KEY", "a-key")
+    monkeypatch.setenv("DUAL_LOBE_B_MODEL", "openai/b-model")
+    monkeypatch.setenv("DUAL_LOBE_B_BASE_URL", "https://b-host.example/v1")
+    monkeypatch.setenv("DUAL_LOBE_B_API_KEY", "b-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.setenv("DUAL_LOBE_FALLBACKS", '[{"model":"openrouter/third"}]')
+
+    for role in ("A", "B_VERIFY"):
+        third = [s for s in resolve_role_specs(role) if s.model == "openrouter/third"][0]
+        assert third.base_url is None
+        assert third.api_key == "or-key"
+
+    a = resolve_role_specs("A")[0]
+    b = resolve_role_specs("B_VERIFY")[0]
+    assert (a.base_url, a.api_key) == ("https://a-host.example/v1", "a-key")
+    assert (b.base_url, b.api_key) == ("https://b-host.example/v1", "b-key")
+
+
+def _four_slot_pool(monkeypatch):
+    for name in ("GROQ_API_KEY", "GROQ_BASE_URL", "OPENROUTER_API_KEY", "OPENROUTER_BASE_URL",
+                 "OPENAI_API_KEY", "OPENAI_API_BASE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("DUAL_LOBE_A_MODEL", "openai/openai/gpt-oss-120b")
+    monkeypatch.setenv("DUAL_LOBE_B_MODEL", "openai/openai/gpt-oss-120b")
+    monkeypatch.setenv("DUAL_LOBE_A_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("DUAL_LOBE_B_BASE_URL", "https://api.groq.com/openai/v1")
+    monkeypatch.setenv("DUAL_LOBE_A_API_KEY", "groq-key")
+    monkeypatch.setenv("DUAL_LOBE_B_API_KEY", "groq-key")
+    monkeypatch.setenv("OR_KEY_1", "or-1")
+    monkeypatch.setenv("OR_KEY_2", "or-2")
+    monkeypatch.setenv("OR_KEY_3", "or-3")
+    m = "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
+    monkeypatch.setenv(
+        "DUAL_LOBE_FALLBACKS",
+        '[' + ",".join(
+            '{"model":"%s","api_key_env":"OR_KEY_%d","label":"openrouter-%d"}' % (m, i, i)
+            for i in (1, 2, 3)
+        ) + ']',
+    )
+    monkeypatch.setenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "false")
+
+
+def test_fallbacks_keep_their_own_location(monkeypatch):
+    from dual_lobe_crewai.llm_factory import resolve_role_specs
+
+    _four_slot_pool(monkeypatch)
+    for role in ("A", "B_VERIFY"):
+        specs = resolve_role_specs(role)
+        assert [(s.base_url, s.api_key) for s in specs] == [
+            ("https://api.groq.com/openai/v1", "groq-key"),
+            (None, "or-1"),
+            (None, "or-2"),
+            (None, "or-3"),
+        ]
+
+
+def test_same_model_different_keys_rotate_as_separate_slots(monkeypatch):
+    from dual_lobe_crewai.llm_factory import resolve_role_specs
+
+    _four_slot_pool(monkeypatch)
+    runner._rr_reset()
+    roles = ["A", "B_VERIFY", "A", "B_VERIFY", "A", "B_VERIFY", "A", "B_VERIFY"]
+    starts = [runner._round_robin_specs(r, resolve_role_specs(r))[0].api_key for r in roles]
+    assert starts == ["groq-key", "or-1", "or-2", "or-3"] * 2

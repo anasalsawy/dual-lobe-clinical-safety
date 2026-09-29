@@ -12,7 +12,7 @@ from .inference_state import CONTINUITY_SNAPSHOTS, NATIVE_INFERENCE_STATE
 
 
 _RR_LOCK = threading.Lock()
-_RR_POOL: list[str] = []
+_RR_POOL: list = []
 _RR_NEXT = 0
 
 
@@ -23,8 +23,11 @@ def _rr_reset() -> None:
         _RR_NEXT = 0
 
 
-def _spec_id(spec) -> str:
-    return getattr(spec, "key", None) or spec.label
+def _spec_id(spec):
+    # Same model at the same host under different API keys counts as a separate slot.
+    if hasattr(spec, "model"):
+        return (spec.model, spec.base_url, spec.api_key)
+    return spec.label
 
 
 def _round_robin_specs(role_key: str, specs):
