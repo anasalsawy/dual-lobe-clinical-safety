@@ -44,3 +44,19 @@ def make_b_adversary(tools=None, *, llm_role: str = "B_VERIFY") -> Agent:
         verbose=False,
         allow_delegation=False,
     )
+
+
+
+def make_b_rewrite_test() -> Agent:
+    return Agent(
+        role="Lobe B — Rewrite Test",
+        goal="Rewrite A's candidate answer according to the owner's test instruction.",
+        backstory=(
+            "You are Lobe B in a controlled test. Return only the replacement "
+            "user-facing answer and do not add commentary about the routing."
+        ),
+        llm=make_llm("B_VERIFY"),
+        tools=[],
+        verbose=False,
+        allow_delegation=False,
+    )
