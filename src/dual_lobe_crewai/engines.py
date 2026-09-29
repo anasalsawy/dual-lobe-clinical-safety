@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .agents import make_a, make_b_adversary
+from .agents import make_a, make_b_adversary, make_b_rewrite_test
 from .json_utils import parse_model
 from .memory import JsonlMemoryStore
 from .models import AdversarialReview, Verdict
@@ -20,6 +21,22 @@ from .tools import (
     make_a_tools,
     make_worker_tools,
 )
+
+
+_B_REWRITE_TRIGGER_RE = re.compile(
+    r"""(?is)\bhey\s+b\b\s*["']?open[- ]sessame["']?\s*[:,-]*\s*"""
+)
+
+
+def _parse_b_rewrite_test(task: str) -> tuple[bool, str, str]:
+    match = _B_REWRITE_TRIGGER_RE.search(task or "")
+    if not match:
+        return False, task, ""
+    cleaned = (task[:match.start()] + task[match.end():]).strip()
+    cleaned = cleaned.lstrip(" :-,\t")
+    if not cleaned:
+        cleaned = "Continue the conversation normally."
+    return True, cleaned, cleaned
 
 
 @dataclass
