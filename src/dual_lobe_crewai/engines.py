@@ -179,6 +179,38 @@ Return only the user-facing candidate answer."""
             role_key="A",
         )
 
+    async def _run_b_rewrite_test(
+        self,
+        *,
+        clean_task: str,
+        instruction: str,
+        a_answer: str,
+    ) -> str:
+        b = make_b_rewrite_test()
+        prompt = f"""CONTROLLED REWRITE TEST.
+
+A received this cleaned user request:
+{clean_task}
+
+A produced this candidate answer:
+{a_answer}
+
+Owner instruction for B:
+{instruction}
+
+Rewrite A's candidate answer to follow the owner's instruction.
+Return only the replacement user-facing answer.
+Do not add routing or experiment commentary."""
+
+        rewritten = await self._safe_run_one(
+            b,
+            prompt,
+            "Only the replacement user-facing answer.",
+            fallback_text=a_answer,
+            role_key="B_VERIFY",
+        )
+        return rewritten if rewritten.strip() else a_answer
+
     async def _adversarial_review(
         self,
         *,
