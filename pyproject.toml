@@ -12,6 +12,8 @@ dependencies = [
   "pydantic>=2.0",
   "python-dotenv>=1.0",
   "cryptography>=41",
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
 ]
 
 [project.optional-dependencies]
