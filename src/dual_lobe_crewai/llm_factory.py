@@ -32,8 +32,8 @@ def _role_defaults(role: str) -> tuple[str, int, str]:
     raise ValueError(f"Unknown LLM role: {role}")
 
 
-def _provider_env_names(model: str, base_url: str | None) -> list[str]:
-    """Return provider-wide credential names for the configured model/endpoint."""
+def _provider_env_names(model: str, base_url: str | None) -> tuple[list[str], list[str]]:
+    """Return provider-wide credential and endpoint variable names."""
     model_l = (model or "").lower()
     host = ""
     if base_url:
@@ -59,8 +59,8 @@ def _provider_env_names(model: str, base_url: str | None) -> list[str]:
     ]
     for markers, key_names, base_names in providers:
         if any(marker in identity for marker in markers):
-            return [*key_names, *base_names]
-    return ["OPENAI_API_KEY", "OPENAI_API_BASE"]
+            return list(key_names), list(base_names)
+    return ["OPENAI_API_KEY"], ["OPENAI_API_BASE"]
 
 
 def _first_env(names: list[str]) -> str | None:
@@ -82,9 +82,9 @@ def primary_spec(role: str) -> ProviderSpec:
             or "http://127.0.0.1:11434/v1"
         )
     else:
-        provider_env = _provider_env_names(model, os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL"))
-        provider_key = _first_env(provider_env[:-1]) if len(provider_env) > 1 else _first_env(provider_env)
-        provider_base = os.getenv(provider_env[-1]) if provider_env else None
+        provider_keys, provider_bases = _provider_env_names(model, os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL"))
+        provider_key = _first_env(provider_keys)
+        provider_base = _first_env(provider_bases)
         api_key = provider_key or os.getenv(f"DUAL_LOBE_{role}_API_KEY") or os.getenv(f"DUAL_LOBE_{key_role}_API_KEY") or os.getenv("OPENAI_API_KEY")
         base_url = os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL") or provider_base
     tier = (os.getenv(f"DUAL_LOBE_{role}_TIER") or os.getenv(f"DUAL_LOBE_{key_role}_TIER") or os.getenv("DUAL_LOBE_PROVIDER_TIER", "auto")).lower()
