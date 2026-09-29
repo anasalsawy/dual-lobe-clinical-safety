@@ -1,4 +1,5 @@
 # Render Blueprint. Variables marked sync: false are prompted for in the dashboard.
+# Free plan: no persistent disk, so memory files reset on restart.
 # One instance per service: the provider rotation counter lives in process memory.
 services:
   - type: web
@@ -7,13 +8,9 @@ services:
     repo: https://github.com/anasalsawy/dual-lobe-clinical-safety
     branch: main
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     numInstances: 1
     healthCheckPath: /health
-    disk:
-      name: dual-lobe-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: DUAL_LOBE_SERVICE_MODE
         value: normal
@@ -40,7 +37,7 @@ services:
       - key: DUAL_LOBE_NATIVE_STATE
         sync: false
       - key: DUAL_LOBE_MEMORY_PATH
-        value: /data/.dual_lobe_memory.jsonl
+        value: /tmp/.dual_lobe_memory.jsonl
       - key: DUAL_LOBE_CONTINUITY_PATH
         sync: false
       - key: DUAL_LOBE_CONTINUITY_SNAPSHOTS
@@ -52,13 +49,9 @@ services:
     repo: https://github.com/anasalsawy/dual-lobe-clinical-safety
     branch: main
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: free
     numInstances: 1
     healthCheckPath: /health
-    disk:
-      name: dual-lobe-clinical-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       - key: DUAL_LOBE_SERVICE_MODE
         value: clinical
@@ -95,7 +88,7 @@ services:
       - key: DUAL_LOBE_NATIVE_STATE
         sync: false
       - key: DUAL_LOBE_MEMORY_PATH
-        value: /data/.dual_lobe_memory.jsonl
+        value: /tmp/.dual_lobe_memory.jsonl
       - key: DUAL_LOBE_CONTINUITY_PATH
         sync: false
       - key: DUAL_LOBE_CONTINUITY_SNAPSHOTS
