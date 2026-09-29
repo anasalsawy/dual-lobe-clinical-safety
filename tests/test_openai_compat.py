@@ -66,3 +66,12 @@ def test_last_message_must_be_user(monkeypatch):
     client = _client(monkeypatch, [])
     r = client.post("/v1/chat/completions", json={"messages": [{"role": "assistant", "content": "x"}]})
     assert r.status_code == 400
+
+
+def test_reply_includes_dual_lobe_meter_when_present(monkeypatch):
+    async def fake_chat(req):
+        return {"answer": "hi", "visible_text": "hi\n\nDual-Lobe meter: [GREEN] verified"}
+
+    monkeypatch.setattr(webapp, "chat", fake_chat)
+    body = TestClient(webapp.app).post("/v1/chat/completions", json={"messages": [{"role": "user", "content": "hi"}]}).json()
+    assert body["choices"][0]["message"]["content"].endswith("Dual-Lobe meter: [GREEN] verified")
