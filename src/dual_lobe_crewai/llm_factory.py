@@ -32,6 +32,41 @@ def _role_defaults(role: str) -> tuple[str, int, str]:
     raise ValueError(f"Unknown LLM role: {role}")
 
 
+def _provider_env_names(model: str, base_url: str | None) -> list[str]:
+    """Return provider-wide credential names for the configured model/endpoint."""
+    model_l = (model or "").lower()
+    host = ""
+    if base_url:
+        try:
+            host = (urlparse(base_url).hostname or "").lower()
+        except Exception:
+            pass
+    identity = f"{model_l} {host}"
+    providers = [
+        (("grok", "xai", "x.ai"), ("GROK_API_KEY", "XAI_API_KEY"), ("GROK_BASE_URL", "XAI_BASE_URL")),
+        (("groq", "groq.com"), ("GROQ_API_KEY",), ("GROQ_BASE_URL",)),
+        (("openrouter", "openrouter.ai"), ("OPENROUTER_API_KEY",), ("OPENROUTER_BASE_URL",)),
+        (("deepinfra", "deepinfra.com"), ("DEEPINFRA_API_KEY",), ("DEEPINFRA_BASE_URL",)),
+        (("anthropic", "claude", "anthropic.com"), ("ANTHROPIC_API_KEY",), ("ANTHROPIC_BASE_URL",)),
+        (("gemini", "google", "generativelanguage.googleapis.com"), ("GEMINI_API_KEY", "GOOGLE_API_KEY"), ("GEMINI_BASE_URL", "GOOGLE_API_BASE")),
+        (("cerebras", "cerebras.ai"), ("CEREBRAS_API_KEY",), ("CEREBRAS_BASE_URL",)),
+        (("together", "together.ai"), ("TOGETHER_API_KEY", "TOGETHERAI_API_KEY"), ("TOGETHER_BASE_URL",)),
+        (("fireworks", "fireworks.ai"), ("FIREWORKS_API_KEY",), ("FIREWORKS_BASE_URL",)),
+        (("mistral", "mistral.ai"), ("MISTRAL_API_KEY",), ("MISTRAL_BASE_URL",)),
+        (("cohere", "cohere.ai"), ("COHERE_API_KEY",), ("COHERE_BASE_URL",)),
+        (("sambanova", "sambanova.ai"), ("SAMBANOVA_API_KEY",), ("SAMBANOVA_BASE_URL",)),
+        (("openai", "api.openai.com"), ("OPENAI_API_KEY",), ("OPENAI_API_BASE",)),
+    ]
+    for markers, key_names, base_names in providers:
+        if any(marker in identity for marker in markers):
+            return [*key_names, *base_names]
+    return ["OPENAI_API_KEY", "OPENAI_API_BASE"]
+
+
+def _first_env(names: list[str]) -> str | None:
+    return next((os.getenv(name) for name in names if os.getenv(name)), None)
+
+
 def primary_spec(role: str) -> ProviderSpec:
     role = role.upper()
     model, max_tokens, key_role = _role_defaults(role)
@@ -47,8 +82,11 @@ def primary_spec(role: str) -> ProviderSpec:
             or "http://127.0.0.1:11434/v1"
         )
     else:
-        api_key = os.getenv(f"DUAL_LOBE_{role}_API_KEY") or os.getenv(f"DUAL_LOBE_{key_role}_API_KEY") or os.getenv("OPENAI_API_KEY")
-        base_url = os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL") or os.getenv("OPENAI_API_BASE")
+        provider_env = _provider_env_names(model, os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL"))
+        provider_key = _first_env(provider_env[:-1]) if len(provider_env) > 1 else _first_env(provider_env)
+        provider_base = os.getenv(provider_env[-1]) if provider_env else None
+        api_key = provider_key or os.getenv(f"DUAL_LOBE_{role}_API_KEY") or os.getenv(f"DUAL_LOBE_{key_role}_API_KEY") or os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv(f"DUAL_LOBE_{role}_BASE_URL") or os.getenv(f"DUAL_LOBE_{key_role}_BASE_URL") or provider_base
     tier = (os.getenv(f"DUAL_LOBE_{role}_TIER") or os.getenv(f"DUAL_LOBE_{key_role}_TIER") or os.getenv("DUAL_LOBE_PROVIDER_TIER", "auto")).lower()
     rpm = _opt_int(os.getenv(f"DUAL_LOBE_{role}_RPM") or os.getenv(f"DUAL_LOBE_{key_role}_RPM"))
     tpm = _opt_int(os.getenv(f"DUAL_LOBE_{role}_TPM") or os.getenv(f"DUAL_LOBE_{key_role}_TPM"))
