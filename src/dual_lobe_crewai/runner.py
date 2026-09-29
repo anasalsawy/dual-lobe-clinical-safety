@@ -8,7 +8,7 @@ from crewai import Crew, Process, Task
 
 from .llm_factory import make_llm, resolve_role_specs
 from .provider_control import RATE_CONTROLLER
-from .inference_state import NATIVE_INFERENCE_STATE
+from .inference_state import CONTINUITY_SNAPSHOTS, NATIVE_INFERENCE_STATE
 
 
 _RR_LOCK = threading.Lock()
@@ -63,6 +63,13 @@ async def run_one(
         state_key = state_key or role_key
     else:
         state_key = None
+    continuity = CONTINUITY_SNAPSHOTS.context(state_key)
+    effective_description = (
+        description
+        if not continuity
+        else continuity + "\n\nCURRENT REQUEST:\n" + description
+    )
+
     specs = _round_robin_specs(role_key, resolve_role_specs(role_key))
     if not specs:
         raise RuntimeError("No LLM providers configured")
@@ -72,7 +79,7 @@ async def run_one(
     last_exc = None
     for original_spec in specs:
         await RATE_CONTROLLER.ensure_discovered(original_spec)
-        input_est = RATE_CONTROLLER.estimate_input_tokens(description + "\n" + expected_output)
+        input_est = RATE_CONTROLLER.estimate_input_tokens(effective_description + "\n" + expected_output)
         spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
         estimated_total = input_est + spec.max_tokens
         await RATE_CONTROLLER.acquire(spec, estimated_total)
@@ -91,10 +98,11 @@ async def run_one(
         )
 
         try:
-            out = await _single_call(agent, description, expected_output)
+            out = await _single_call(agent, effective_description, expected_output)
             if out is None or not str(out).strip():
                 raise ValueError("Invalid response from LLM call - None or empty.")
             await NATIVE_INFERENCE_STATE.checkpoint(native_state)
+            CONTINUITY_SNAPSHOTS.checkpoint(state_key, description, str(out))
             return str(out)
         except Exception as exc:
             NATIVE_INFERENCE_STATE.release(native_state)
