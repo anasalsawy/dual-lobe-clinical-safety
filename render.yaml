@@ -1,0 +1,102 @@
+# Render Blueprint. Variables marked sync: false are prompted for in the dashboard.
+# One instance per service: the provider rotation counter lives in process memory.
+services:
+  - type: web
+    name: dual-lobe
+    runtime: docker
+    repo: https://github.com/anasalsawy/dual-lobe-clinical-safety
+    branch: main
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /health
+    disk:
+      name: dual-lobe-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DUAL_LOBE_SERVICE_MODE
+        value: normal
+      - key: DUAL_LOBE_A_MODEL
+        sync: false
+      - key: DUAL_LOBE_A_BASE_URL
+        sync: false
+      - key: DUAL_LOBE_A_API_KEY
+        sync: false
+      - key: DUAL_LOBE_B_MODEL
+        sync: false
+      - key: DUAL_LOBE_B_BASE_URL
+        sync: false
+      - key: DUAL_LOBE_B_API_KEY
+        sync: false
+      - key: DUAL_LOBE_FALLBACKS
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: DUAL_LOBE_CROSS_ROLE_FAILOVER
+        value: "true"
+      - key: DUAL_LOBE_RATE_SENSOR
+        sync: false
+      - key: DUAL_LOBE_NATIVE_STATE
+        sync: false
+      - key: DUAL_LOBE_MEMORY_PATH
+        value: /data/.dual_lobe_memory.jsonl
+      - key: DUAL_LOBE_CONTINUITY_PATH
+        sync: false
+      - key: DUAL_LOBE_CONTINUITY_SNAPSHOTS
+        sync: false
+
+  - type: web
+    name: dual-lobe-clinical
+    runtime: docker
+    repo: https://github.com/anasalsawy/dual-lobe-clinical-safety
+    branch: main
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /health
+    disk:
+      name: dual-lobe-clinical-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DUAL_LOBE_SERVICE_MODE
+        value: clinical
+      - key: DUAL_LOBE_A_MODEL
+        sync: false
+      - key: DUAL_LOBE_A_BASE_URL
+        sync: false
+      - key: DUAL_LOBE_A_API_KEY
+        sync: false
+      - key: DUAL_LOBE_B_MODEL
+        sync: false
+      - key: DUAL_LOBE_B_BASE_URL
+        sync: false
+      - key: DUAL_LOBE_B_API_KEY
+        sync: false
+      - key: DUAL_LOBE_CLINICAL_B_MODEL
+        sync: false
+      - key: DUAL_LOBE_CLINICAL_B_BASE_URL
+        sync: false
+      - key: DUAL_LOBE_CLINICAL_B_API_KEY
+        sync: false
+      - key: DUAL_LOBE_CLINICAL_B_LOCAL_ONLY
+        sync: false
+      - key: DUAL_LOBE_TESTING_MODE
+        sync: false
+      - key: DUAL_LOBE_FALLBACKS
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: DUAL_LOBE_CROSS_ROLE_FAILOVER
+        value: "true"
+      - key: DUAL_LOBE_RATE_SENSOR
+        sync: false
+      - key: DUAL_LOBE_NATIVE_STATE
+        sync: false
+      - key: DUAL_LOBE_MEMORY_PATH
+        value: /data/.dual_lobe_memory.jsonl
+      - key: DUAL_LOBE_CONTINUITY_PATH
+        sync: false
+      - key: DUAL_LOBE_CONTINUITY_SNAPSHOTS
+        sync: false
