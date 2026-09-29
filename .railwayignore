@@ -1,0 +1,39 @@
+# Railway deployment ignore file
+# Excludes unnecessary files from Railway builds
+
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.tox
+venv
+env
+.venv
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Project-specific
+results/                    # Benchmark results (can be large)
+.dual_lobe_memory.jsonl    # Local memory file
+.env                       # Use Railway secrets instead
+
+# Documentation (optional, saves space)
+paper/
+protocols/
+docs/
+
+# Test results
+.coverage
+htmlcov/
