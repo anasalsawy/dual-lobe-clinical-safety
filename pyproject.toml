@@ -11,7 +11,9 @@ dependencies = [
   "crewai>=0.80.0",
   "pydantic>=2.0",
   "python-dotenv>=1.0",
-  "cryptography>=43.0"
+  "cryptography>=43.0",
+  "fastapi>=0.115",
+  "uvicorn>=0.30"
 ]
 
 [project.optional-dependencies]
@@ -20,6 +22,7 @@ test = ["pytest>=8", "pytest-asyncio>=0.23"]
 [project.scripts]
 dual-lobe = "dual_lobe_crewai.main:main"
 dual-lobe-clinical = "dual_lobe_clinical.main:main"
+dual-lobe-web = "dual_lobe_crewai.webapp:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dual_lobe_crewai", "src/dual_lobe_clinical"]
