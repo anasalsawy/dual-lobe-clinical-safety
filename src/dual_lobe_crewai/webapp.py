@@ -116,7 +116,8 @@ async def chat_completions(req: OpenAIChatRequest, authorization: str | None = _
         message = f"Instructions:\n{system}\n\n{message}"
 
     out = await chat(ChatRequest(message=message, patient_context=patient_context))
-    answer = str(out.get("answer") or "")
+    # visible_text carries the Dual-Lobe meter / release banner where the engine produces one.
+    answer = str(out.get("visible_text") or out.get("answer") or "")
     completion_id = f"chatcmpl-{_uuid.uuid4().hex}"
     created = int(_time.time())
 
