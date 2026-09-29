@@ -68,11 +68,16 @@ def resolve_role_specs(role: str) -> list[ProviderSpec]:
         key = row.get("api_key")
         if not key and row.get("api_key_env"):
             key = os.getenv(str(row["api_key_env"]))
+        base_url = row.get("base_url")
+        if role == "B_CLINICAL":
+            key = key or primary.api_key
+            base_url = base_url or primary.base_url
+        # Other fallbacks live at their own provider, never at the primary's endpoint.
         out.append(ProviderSpec(
             model=str(row["model"]),
             max_tokens=int(row.get("max_tokens") or primary.max_tokens),
-            api_key=key or primary.api_key,
-            base_url=row.get("base_url") or primary.base_url,
+            api_key=key,
+            base_url=base_url,
             tier=str(row.get("tier") or "auto").lower(),
             rpm=_opt_int(row.get("rpm")),
             tpm=_opt_int(row.get("tpm")),

@@ -368,7 +368,7 @@ async def test_round_robin_rotates_providers_and_moves_on_after_an_error(monkeyp
             raise RuntimeError("503 unavailable")
         return "ok"
 
-    monkeypatch.setattr(runner, "_RR_INDEX", {})
+    runner._rr_reset()
     monkeypatch.setattr(runner, "_single_call", fake_call)
     monkeypatch.setattr(runner, "make_llm", lambda role, spec: spec)
     monkeypatch.setattr(runner, "_set_llm", lambda agent, llm: setattr(runner, "_current_label", llm.label))
