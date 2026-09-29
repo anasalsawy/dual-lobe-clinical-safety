@@ -215,4 +215,96 @@ class NativeInferenceStateManager:
                 pass
 
 
+class ContinuitySnapshotStore:
+    """Role-scoped working-state snapshots for seamless behavioral continuation.
+
+    This is used for every persistent model role, including hosted providers that
+    cannot expose native KV state. It keeps only that role's own prior request/
+    response stream and feeds it back on the next call. When native KV/slot state
+    is available, both mechanisms can operate together.
+    """
+
+    def __init__(self) -> None:
+        self.enabled = os.getenv("DUAL_LOBE_CONTINUITY_SNAPSHOTS", "true").lower() in {
+            "1", "true", "yes", "on"
+        }
+        self.path = os.getenv(
+            "DUAL_LOBE_CONTINUITY_PATH",
+            ".dual_lobe_continuity_snapshots.json",
+        )
+        self._lock = threading.RLock()
+        self._state: dict[str, list[dict[str, str]]] = {}
+        self._loaded = False
+
+    def _load_once(self) -> None:
+        with self._lock:
+            if self._loaded:
+                return
+            self._loaded = True
+            try:
+                with open(self.path, "r", encoding="utf-8") as fh:
+                    raw = json.load(fh)
+                if isinstance(raw, dict):
+                    for key, rows in raw.items():
+                        if isinstance(key, str) and isinstance(rows, list):
+                            clean = []
+                            for row in rows:
+                                if not isinstance(row, dict):
+                                    continue
+                                request = row.get("request")
+                                response = row.get("response")
+                                if isinstance(request, str) and isinstance(response, str):
+                                    clean.append({"request": request, "response": response})
+                            self._state[key] = clean
+            except Exception:
+                pass
+
+    def _persist(self) -> None:
+        try:
+            tmp = self.path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(self._state, fh, ensure_ascii=False)
+            os.replace(tmp, self.path)
+        except Exception:
+            pass
+
+    def context(self, state_key: str | None) -> str:
+        if not self.enabled or not state_key:
+            return ""
+        self._load_once()
+        with self._lock:
+            rows = list(self._state.get(state_key, []))
+        if not rows:
+            return ""
+        parts = [
+            "CONTINUITY SNAPSHOT — continue as the same ongoing working thread. "
+            "This is your own immediately preceding working context, not a new task summary."
+        ]
+        for row in rows:
+            parts.append("PRIOR REQUEST:\n" + row["request"])
+            parts.append("PRIOR RESPONSE:\n" + row["response"])
+        return "\n\n".join(parts)
+
+    def checkpoint(self, state_key: str | None, request: str, response: str) -> None:
+        if not self.enabled or not state_key:
+            return
+        self._load_once()
+        with self._lock:
+            self._state.setdefault(state_key, []).append(
+                {"request": request, "response": response}
+            )
+            self._persist()
+
+    def clear(self, state_key: str | None = None) -> None:
+        self._load_once()
+        with self._lock:
+            if state_key is None:
+                self._state.clear()
+            else:
+                self._state.pop(state_key, None)
+            self._persist()
+
+
+CONTINUITY_SNAPSHOTS = ContinuitySnapshotStore()
+
 NATIVE_INFERENCE_STATE = NativeInferenceStateManager()
