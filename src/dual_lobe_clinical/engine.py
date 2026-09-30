@@ -13,7 +13,7 @@ from dual_lobe_crewai.runner import run_one
 from dual_lobe_crewai.tools import ProxyToolTrace
 from dual_lobe_crewai.models import Verdict
 
-from .agents import make_b_executor, make_planner
+from .agents import make_b_executor, make_b_verifier, make_planner
 from .models import ExecutionReport, Plan, PlanContract
 from .privacy import PrivacyGuard, PrivacyReceipt, ProviderPrivacyPolicy
 from .prompts import (
@@ -218,14 +218,14 @@ class ClinicalDualLobeEngine:
     async def _b_verify(self, *, query: str, patient_context: str, a_reasoning: str) -> Verdict:
         """B verifies A's reasoning when no tools are used."""
         raw = await self._call(
-            make_planner(),  # reuse planner for B-verify prompt
+            make_b_verifier(),
             build_b_verify_prompt(
                 query=query,
                 patient_context=patient_context,
                 a_reasoning=a_reasoning,
             ),
             "Adversarial verdict on A's reasoning: GREEN|YELLOW|RED with rationale.",
-            role_key="B_VERIFY",
+            role_key="B_CLINICAL_VERIFY",
             state_key="clinical:B_VERIFY",
         )
 
