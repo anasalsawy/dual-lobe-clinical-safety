@@ -3,6 +3,7 @@ from __future__ import annotations
 from crewai import Agent
 
 from dual_lobe_crewai.llm_factory import make_llm
+from dual_lobe_crewai.prompts import B_ADVERSARY_PERSONA
 
 
 def make_planner() -> Agent:
@@ -38,6 +39,22 @@ def make_b_executor(tools=None) -> Agent:
             "because A alone owns the plan and user intent."
         ),
         llm=make_llm("B_CLINICAL"),
+        tools=list(tools or []),
+        verbose=False,
+        allow_delegation=False,
+    )
+
+
+def make_b_verifier(tools=None) -> Agent:
+    return Agent(
+        role="Lobe B — Independent Adversary and Anti-Deception Verifier",
+        goal=(
+            "Independently challenge A's reasoning, goal-fit, assumptions, feasibility, execution provenance, "
+            "and every material claim; surface omissions and contradictory evidence; never wave through an "
+            "unsupported claim merely because A is confident or because B agrees with it."
+        ),
+        backstory=B_ADVERSARY_PERSONA,
+        llm=make_llm("B_CLINICAL_VERIFY"),
         tools=list(tools or []),
         verbose=False,
         allow_delegation=False,

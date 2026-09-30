@@ -41,6 +41,8 @@ async def chat(req: ChatRequest) -> dict[str, Any]:
         return {
             "mode": "clinical",
             "answer": result.answer,
+            "visible_text": result.visible_text(),
+            "verdict": result.verdict.model_dump(),
             "plan_revision": result.plan_revision,
             "timings_ms": result.timings_ms,
             "logical_model_calls": result.logical_model_calls,

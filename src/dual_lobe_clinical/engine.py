@@ -11,8 +11,12 @@ from crewai.tools import BaseTool
 
 from dual_lobe_crewai.runner import run_one
 from dual_lobe_crewai.tools import ProxyToolTrace
+from dual_lobe_crewai.models import Verdict, AdversarialReview
+from dual_lobe_crewai.json_utils import parse_model
+from dual_lobe_crewai.prompts import ADVERSARIAL_PROTOCOL, VERIFICATION_PROTOCOL
 
-from .agents import make_b_executor, make_planner
+from .agents import make_b_executor, make_planner, make_b_verifier
+from dual_lobe_crewai.tools import make_worker_tools
 from .models import ExecutionReport, Plan, PlanContract
 from .privacy import PrivacyGuard, PrivacyReceipt, ProviderPrivacyPolicy
 from .prompts import (
@@ -40,6 +44,7 @@ class ClinicalRunResult:
     execution_report: str
     delegated_results: str
     answer: str
+    verdict: Verdict
     trace_event_count: int = 0
     trace_sha256: str = ""
     timings_ms: dict[str, int | float] = field(default_factory=dict)
@@ -49,6 +54,10 @@ class ClinicalRunResult:
     @property
     def released_answer(self) -> str:
         return self.answer
+
+    def visible_text(self) -> str:
+        meter = f"[{self.verdict.deception_level}] {self.verdict.rationale}".strip()
+        return f"{self.answer.rstrip()}\n\nDual-Lobe meter: {meter}"
 
 
 class ClinicalDualLobeEngine:
@@ -198,6 +207,127 @@ class ClinicalDualLobeEngine:
             state_key="clinical:A",
         )
 
+    async def _b_verify(
+        self,
+        *,
+        query: str,
+        patient_context: str,
+        a_answer: str,
+        contract: PlanContract,
+        execution_report: str,
+        delegated_results: str,
+        trace_text: str,
+        trace: ProxyToolTrace,
+    ) -> AdversarialReview:
+        b_trace = ProxyToolTrace()
+        b = make_b_verifier(tools=make_worker_tools(trace=b_trace))
+        prompt = f"""You are Lobe B. A has produced a candidate answer. Your job is to attack it adversarially and then verify it. You are NOT the fixer or co-author.
+
+ORIGINAL USER TASK:
+{query}
+
+PATIENT CONTEXT:
+{patient_context if patient_context else "(none)"}
+
+CURRENT PLAN:
+{contract.current_json()}
+
+A'S CANDIDATE ANSWER:
+{a_answer}
+
+EXECUTION REPORT:
+{execution_report if execution_report else "(none)"}
+
+DELEGATED RESULTS:
+{delegated_results if delegated_results else "(none)"}
+
+EXECUTION TRACE:
+{trace_text if trace_text else "(no trace)"}
+
+{ADVERSARIAL_PROTOCOL}
+
+{VERIFICATION_PROTOCOL}
+
+Perform this sequence:
+1. Attack A's reasoning, feasibility, hidden assumptions, and goal-fit.
+2. Ask what the user is not seeing that could change the approach.
+3. Ask whether the answer may fail to achieve the user's actual intent.
+4. Audit every material claim under the anti-deception protocol.
+5. Do NOT repair, rewrite, complete, or improve A's answer. Expose the holes and state what would have to change or be proven.
+6. Apply the verdict to A's EXACT answer as it stands.
+7. Return A's answer unchanged in final_answer solely as the canonical payload, alongside your independent adversarial findings and verdict.
+
+Return ONLY JSON:
+{{
+  "final_answer": "A's candidate answer reproduced unchanged",
+  "answer_verdict": {{
+    "deception_level": "GREEN|YELLOW|RED",
+    "rationale": "brief evidence-grounded reason",
+    "handoff": {{
+      "next_step": "",
+      "missing": [],
+      "unverified": [],
+      "widen": [],
+      "memory_query": "",
+      "proof_requests": []
+    }}
+  }},
+  "challenges": ["important holes B found"],
+  "intent_risks": ["ways this may fail the user's actual goal"],
+  "overlooked_context": ["missing facts or perspectives that could change the approach"],
+  "delegation_note": "whether delegation was used well, underused, or not applicable"
+}}
+
+Do not include a challenge merely to populate a field. Empty lists are correct when nothing material is found."""
+        raw = await self._call(
+            b,
+            prompt,
+            "Strict JSON adversarial attack with A's answer unchanged plus anti-deception verdict.",
+            role_key="B_CLINICAL_VERIFY",
+            state_key="clinical:B_VERIFY",
+        )
+        fallback = AdversarialReview(
+            final_answer=a_answer or "A_AND_B_CALLS_FAILED_OR_EMPTY",
+            answer_verdict=Verdict(
+                deception_level="YELLOW",
+                rationale="B adversarial verification could not be completed or parsed.",
+            ),
+            challenges=[],
+            intent_risks=[],
+            overlooked_context=[],
+            delegation_note="Verification impaired.",
+        )
+        review = parse_model(raw, AdversarialReview, fallback)
+        review.answer_verdict = self._harden_verdict(review.answer_verdict)
+
+        if b_trace.events:
+            trace.add(
+                "b_verify_tools",
+                input_text="adversarial review and verification",
+                output_text=b_trace.render(),
+                provenance="lobe_b_verify_trace",
+            )
+        return review
+
+    @staticmethod
+    def _harden_verdict(verdict: Verdict) -> Verdict:
+        unresolved = (
+            verdict.handoff.missing
+            or verdict.handoff.unverified
+            or verdict.handoff.proof_requests
+        )
+        if verdict.deception_level == "GREEN" and unresolved:
+            return verdict.model_copy(
+                update={
+                    "deception_level": "YELLOW",
+                    "rationale": (
+                        "Material evidence or task gaps remain unresolved; GREEN is not allowed. "
+                        + verdict.rationale
+                    )[:1600],
+                }
+            )
+        return verdict
+
     async def run_clinical(
         self,
         *,
@@ -287,8 +417,21 @@ class ClinicalDualLobeEngine:
             )
             timings["a_review_ms"] = int((time.perf_counter() - t) * 1000)
 
+            t = time.perf_counter()
+            review = await self._b_verify(
+                query=sanitized_query,
+                patient_context=sanitized_context,
+                a_answer=final_answer,
+                contract=contract,
+                execution_report=safe_report,
+                delegated_results=safe_delegated,
+                trace_text=safe_trace,
+                trace=trace,
+            )
+            timings["b_verify_ms"] = int((time.perf_counter() - t) * 1000)
+
             if local_delivery is not None:
-                local_delivery(vault.rehydrate_text(final_answer))
+                local_delivery(vault.rehydrate_text(review.final_answer))
 
             trace_sha256 = hashlib.sha256(safe_trace.encode("utf-8")).hexdigest()
             plan_sha256 = contract.fingerprint()
@@ -300,11 +443,12 @@ class ClinicalDualLobeEngine:
                 plan_sha256=plan_sha256,
                 execution_report=safe_report,
                 delegated_results=safe_delegated,
-                answer=final_answer,
+                answer=review.final_answer,
+                verdict=review.answer_verdict,
                 trace_event_count=len(trace.snapshot_from(0)),
                 trace_sha256=trace_sha256,
                 timings_ms=timings,
-                logical_model_calls=3 + contract.revision + delegate_state.child_count,
+                logical_model_calls=4 + contract.revision + delegate_state.child_count,
                 privacy_receipt=receipt,
             )
         finally:
