@@ -51,7 +51,7 @@ def _provider_env_names(model: str, base_url: str | None) -> tuple[list[str], li
     providers = [
         (("grok", "xai", "x.ai"), ("GROK_API_KEY", "XAI_API_KEY"), ("GROK_BASE_URL", "XAI_BASE_URL")),
         (("groq", "groq.com"), ("GROQ_API_KEY",), ("GROQ_BASE_URL",)),
-        (("openrouter", "openrouter.ai"), ("OPENROUTER_API_KEY",), ("OPENROUTER_BASE_URL",)),
+        (("openrouter", "openrouter.ai"), ("OPENROUTER_API_KEY", "OPENROUTER_API_KEY_1", "OPENROUTER_API_KEY_2", "OPENROUTER_API_KEY_3"), ("OPENROUTER_BASE_URL",)),
         (("deepinfra", "deepinfra.com"), ("DEEPINFRA_API_KEY",), ("DEEPINFRA_BASE_URL",)),
         (("anthropic", "claude", "anthropic.com"), ("ANTHROPIC_API_KEY",), ("ANTHROPIC_BASE_URL",)),
         (("gemini", "google", "generativelanguage.googleapis.com"), ("GEMINI_API_KEY", "GOOGLE_API_KEY"), ("GEMINI_BASE_URL", "GOOGLE_API_BASE")),
