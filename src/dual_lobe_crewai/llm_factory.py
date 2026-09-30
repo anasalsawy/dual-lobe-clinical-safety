@@ -11,7 +11,7 @@ from .provider_control import ProviderSpec
 def _role_defaults(role: str) -> tuple[str, int, str]:
     role = role.upper()
     a_default = os.getenv("DUAL_LOBE_A_MODEL", "openrouter/nvidia/nemotron-3-super-120b-a12b:free")
-    b_default = os.getenv("DUAL_LOBE_B_MODEL", a_default)
+    b_default = os.getenv("DUAL_LOBE_B_MODEL", "deepinfra/XiaomiMiMo/MiMo-V2.6-Flash")
     if role == "A":
         return a_default, int(os.getenv("DUAL_LOBE_A_MAX_TOKENS", "8000")), "A"
     if role == "A_CHILD":
@@ -25,8 +25,14 @@ def _role_defaults(role: str) -> tuple[str, int, str]:
     if role == "B_CLINICAL":
         return (
             os.getenv("DUAL_LOBE_CLINICAL_B_MODEL", b_default),
-            int(os.getenv("DUAL_LOBE_CLINICAL_B_MAX_TOKENS", os.getenv("DUAL_LOBE_B_VERIFY_MAX_TOKENS", "6000"))),
-            "CLINICAL_B",
+            int(os.getenv("DUAL_LOBE_CLINICAL_B_MAX_TOKENS", "6000")),
+            "B",
+        )
+    if role == "B_CLINICAL_VERIFY":
+        return (
+            os.getenv("DUAL_LOBE_B_CLINICAL_VERIFY_MODEL", b_default),
+            int(os.getenv("DUAL_LOBE_B_CLINICAL_VERIFY_MAX_TOKENS", "6000")),
+            "B",
         )
     raise ValueError(f"Unknown LLM role: {role}")
 
@@ -69,10 +75,7 @@ def resolve_role_specs(role: str) -> list[ProviderSpec]:
         if not key and row.get("api_key_env"):
             key = os.getenv(str(row["api_key_env"]))
         base_url = row.get("base_url")
-        if role == "B_CLINICAL":
-            key = key or primary.api_key
-            base_url = base_url or primary.base_url
-        # Other fallbacks live at their own provider, never at the primary's endpoint.
+        # Fallbacks live at their own provider, never at the primary's endpoint.
         out.append(ProviderSpec(
             model=str(row["model"]),
             max_tokens=int(row.get("max_tokens") or primary.max_tokens),
@@ -84,7 +87,7 @@ def resolve_role_specs(role: str) -> list[ProviderSpec]:
             label=str(row.get("label") or f"{role}:fallback:{i}"),
         ))
 
-    if role != "B_CLINICAL" and os.getenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "true").lower() in {"1", "true", "yes", "on"}:
+    if os.getenv("DUAL_LOBE_CROSS_ROLE_FAILOVER", "true").lower() in {"1", "true", "yes", "on"}:
         for other in ["A", "A_CHILD", "B_VERIFY"]:
             if other == role or (role == "A_MERGE" and other == "A"):
                 continue
