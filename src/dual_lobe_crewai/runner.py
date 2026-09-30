@@ -21,17 +21,47 @@ _EGRESS_FILTERS: list[EgressFilter] = []
 # (role, provider label, model) of every successful call, so callers can record which provider actually served.
 SERVED_CALLS: list[tuple[str, str, str]] = []
 _RR_LOCK = threading.Lock()
-_RR_INDEX: dict[str, int] = {}
+_RR_POOL: list = []
+_RR_NEXT = 0
+
+
+def _rr_reset() -> None:
+    global _RR_NEXT
+    with _RR_LOCK:
+        _RR_POOL.clear()
+        _RR_NEXT = 0
+
+
+def _spec_id(spec):
+    # Same model at the same host under different API keys counts as a separate slot.
+    if hasattr(spec, "model"):
+        return (spec.model, spec.base_url, spec.api_key)
+    return spec.label
 
 
 def _round_robin_specs(role_key: str, specs):
-    """Rotate a role's providers so each call starts on the next one (1,2,3,4,1,...)."""
+    """Rotate one shared provider cycle across all calls (1,2,3,1,2,3...), regardless of role.
+
+    A role that lacks the next provider in the cycle starts on the next one it has.
+    """
+    global _RR_NEXT
+    specs = list(specs)
     if len(specs) <= 1:
-        return list(specs)
+        return specs
+    ids = [_spec_id(s) for s in specs]
     with _RR_LOCK:
-        start = _RR_INDEX.get(role_key, 0) % len(specs)
-        _RR_INDEX[role_key] = (start + 1) % len(specs)
-    return list(specs[start:]) + list(specs[:start])
+        for sid in ids:
+            if sid not in _RR_POOL:
+                _RR_POOL.append(sid)
+        n = len(_RR_POOL)
+        start = 0
+        for step in range(n):
+            target = _RR_POOL[(_RR_NEXT + step) % n]
+            if target in ids:
+                start = ids.index(target)
+                _RR_NEXT = (_RR_NEXT + step + 1) % n
+                break
+    return specs[start:] + specs[:start]
 
 
 def register_egress_filter(fn: EgressFilter) -> None:
@@ -104,12 +134,13 @@ async def run_one(
                 # (e.g. a local one) may still be acceptable.
                 last_exc = exc
                 continue
-            input_est = RATE_CONTROLLER.estimate_input_tokens(guarded_description + "\n" + guarded_expected)
-            spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
-            estimated_total = input_est + spec.max_tokens
-            await RATE_CONTROLLER.acquire(spec, estimated_total)
-            _set_llm(agent, make_llm(role_key, spec=spec))
+            spec = original_spec
             try:
+                input_est = RATE_CONTROLLER.estimate_input_tokens(guarded_description + "\n" + guarded_expected)
+                spec = RATE_CONTROLLER.fit_output_budget(original_spec, input_est)
+                estimated_total = input_est + spec.max_tokens
+                await RATE_CONTROLLER.acquire(spec, estimated_total)
+                _set_llm(agent, make_llm(role_key, spec=spec))
                 out = await _single_call(agent, guarded_description, guarded_expected)
                 if out is None or not str(out).strip():
                     raise ValueError("Invalid response from LLM call - None or empty.")
