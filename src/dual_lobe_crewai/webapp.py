@@ -38,10 +38,11 @@ async def chat(req: ChatRequest) -> dict[str, Any]:
             query=req.message,
             patient_context=req.patient_context,
         )
+        meter = f"[{result.verdict.deception_level}] {result.verdict.rationale}".strip()
         return {
             "mode": "clinical",
             "answer": result.answer,
-            "visible_text": result.visible_text(),
+            "visible_text": f"{result.answer.rstrip()}\n\nDual-Lobe meter: {meter}",
             "verdict": result.verdict.model_dump(),
             "plan_revision": result.plan_revision,
             "timings_ms": result.timings_ms,

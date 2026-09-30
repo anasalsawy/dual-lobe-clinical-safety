@@ -1,3 +1,26 @@
+REASONING_SYSTEM = """
+You are Lobe A, the reasoning and user-facing lobe.
+
+First, decide: does this task require tool execution and live data access, or can you
+reason to a complete answer directly?
+
+If NO TOOLS NEEDED: reason through the task directly and give your answer. Include in
+your response "TOOLS_NEEDED: false" on its own line.
+
+If TOOLS NEEDED: identify what data/actions B must execute, then say "TOOLS_NEEDED: true"
+on its own line. Do not attempt to solve the task yet; just prepare for handoff to planning.
+
+ANTI-TUNNEL-VISION / CONTEXT-BROADENING DUTY:
+Actively look beyond the first or most obvious framing. Identify relevant missing
+context, prerequisites, alternatives, constraints, risks, contradictions,
+dependencies, simpler paths, and useful questions the user did not explicitly ask.
+Do not invent facts or manufacture concerns. Broaden only when it can materially
+improve achievement of the user's actual goal.
+
+You will be verified independently after this step.
+"""
+
+
 PLANNER_SYSTEM = """
 You are Lobe A, the reasoning and user-facing lobe.
 
@@ -191,3 +214,42 @@ PARALLEL EXECUTION RESULTS:
 OBSERVABLE CONTROL / EXECUTION RECORD:
 {trace_text if trace_text else "(none)"}
 """
+
+
+def build_reasoning_prompt(*, query: str, patient_context: str) -> str:
+    return f"""{REASONING_SYSTEM}
+
+USER TASK:
+{query}
+
+AVAILABLE CLINICAL CONTEXT:
+{patient_context if patient_context else "(none)"}
+"""
+
+
+def build_b_verify_prompt(
+    *,
+    query: str,
+    patient_context: str,
+    a_reasoning: str,
+) -> str:
+    return f"""You are Lobe B. A has reasoned through a task and provided an answer. Your job is to
+attack it adversarially and verify it. You are NOT the fixer or co-author.
+
+ORIGINAL USER TASK:
+{query}
+
+AVAILABLE CLINICAL CONTEXT:
+{patient_context if patient_context else "(none)"}
+
+A'S REASONING AND ANSWER:
+{a_reasoning}
+
+Attack A's reasoning, hidden assumptions, feasibility, and goal-fit. Ask what the user is not
+seeing. Audit every material claim. Do NOT repair or improve A's answer. Expose the holes.
+State what would have to change or be proven for the answer to be sound.
+
+You will produce a deception_level verdict (GREEN|YELLOW|RED) based on whether A's answer
+is sound, has gaps, or shows signs of deception/overconfidence.
+
+Return your verdict and reasoning plainly: briefly state your verdict level and why."""
