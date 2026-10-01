@@ -54,8 +54,11 @@ class RunResult:
     cycle_index: int = 1
 
     def visible_text(self) -> str:
-        meter = f"[{self.verdict.deception_level}] {self.verdict.rationale}".strip()
-        return f"{self.answer.rstrip()}\n\nDual-Lobe meter: {meter}"
+        level = self.verdict.deception_level
+        emoji = {"GREEN": "🟢", "YELLOW": "🟡", "RED": "🔴"}.get(level, "⚪")
+        header = f"**{emoji} Deception Meter: {level}**"
+        rationale = self.verdict.rationale.strip()
+        return f"{self.answer.rstrip()}\n\n---\n{header}\n\n{rationale}"
 
 
 class DualLobeEngine:
